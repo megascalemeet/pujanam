@@ -65,7 +65,7 @@ class _LoginPageState extends State<LoginPage>
 
   Future<void> handleSendOtp() async {
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.sendOtp(mobileController.text);
+    final success = await authProvider.sendOtp('+91${mobileController.text}');
     if (success) {
       _startResendCooldown();
     } else if (authProvider.errorMessage != null) {
@@ -73,10 +73,10 @@ class _LoginPageState extends State<LoginPage>
         SnackBar(
           content: Text(
             authProvider.errorMessage!,
-            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins'),
+            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
           ),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 6),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -86,10 +86,21 @@ class _LoginPageState extends State<LoginPage>
   Future<void> handleVerifyOtp() async {
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.verifyOtp(
-      mobileController.text,
+      '+91${mobileController.text}',
       otpController.text,
     );
     if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Login Successful!',
+            style: TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 6),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
       );
@@ -98,10 +109,10 @@ class _LoginPageState extends State<LoginPage>
         SnackBar(
           content: Text(
             authProvider.errorMessage!,
-            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins'),
+            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
           ),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 6),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -135,40 +146,45 @@ class _LoginPageState extends State<LoginPage>
                       bottomRight: Radius.circular(60),
                     ),
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          height: 80,
-                          width: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Image.asset(
-                            'assets/images/app_logo.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(
-                                  Icons.error,
-                                  color: Colors.black,
-                                  size: 60,
-                                ),
-                          ),
+                  child: Stack(
+                    children: [
+                      Container(
+                        color: primaryColor,
+                      ),
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              height: 80,
+                              width: 80,
+                              color: Colors.white,
+                              child: Image.asset(
+                                'assets/images/app_logo.png',
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.error,
+                                    color: Colors.black,
+                                    size: 80,
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Welcome Back',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Welcome Back',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Poppins',
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -178,271 +194,327 @@ class _LoginPageState extends State<LoginPage>
                   height: size.height * 0.63,
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.only(
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(40),
                       topRight: Radius.circular(40),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
                   ),
-                  child: SingleChildScrollView(
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const MainNavigationScreen(),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Skip Login',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: primaryColor,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        clipBehavior: Clip.hardEdge,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
                           ),
-                          const Text(
-                            'Login',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 15,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(15),
-                                    bottomLeft: Radius.circular(15),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const MainNavigationScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Skip Login',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: primaryColor,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                child: const Text(
-                                  '+91',
+                                const Text(
+                                  'Login',
                                   style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black87,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
                                     fontFamily: 'Poppins',
                                   ),
                                 ),
-                              ),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: mobileController,
-                                  keyboardType: TextInputType.number,
-                                  enabled: !authProvider.isOtpSent,
-                                  style: const TextStyle(fontFamily: 'Poppins'),
-                                  decoration: InputDecoration(
-                                    labelText: 'Mobile Number',
-                                    labelStyle: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                    ),
-                                    hintText:
-                                        'Enter your whatsapp mobile number',
-                                    hintStyle: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                    ),
-                                    prefixIcon: const Icon(
-                                      Icons.person,
-                                      color: primaryColor,
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.grey[100],
-                                    border: const OutlineInputBorder(
-                                      borderRadius: BorderRadius.only(
-                                        topRight: Radius.circular(15),
-                                        bottomRight: Radius.circular(15),
+                                const SizedBox(height: 40),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 15,
                                       ),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                  ),
-                                  validator: (value) => (value?.length != 10)
-                                      ? 'Please enter a valid 10-digit mobile number'
-                                      : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (authProvider.isOtpSent) ...[
-                            const SizedBox(height: 20),
-                            Text(
-                              'Enter Whatsapp OTP sent to +91${mobileController.text}',
-                              style: const TextStyle(
-                                color: primaryColor,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            TextFormField(
-                              controller: otpController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(fontFamily: 'Poppins'),
-                              decoration: InputDecoration(
-                                labelText: 'OTP',
-                                labelStyle: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                ),
-                                hintText: 'Enter the 6-digit OTP',
-                                hintStyle: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                ),
-                                prefixIcon: const Icon(
-                                  Icons.lock_outline,
-                                  color: primaryColor,
-                                ),
-                                filled: true,
-                                fillColor: Colors.grey[100],
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                  borderSide: BorderSide.none,
-                                ),
-                              ),
-                              validator: (value) => (value?.length != 6)
-                                  ? 'OTP must be 6 digits'
-                                  : null,
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                TextButton(
-                                  onPressed: authProvider.isLoading
-                                      ? null
-                                      : () => authProvider.resetOtpStatus(),
-                                  child: const Text(
-                                    'Change Number',
-                                    style: TextStyle(
-                                      color: primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'Poppins',
-                                    ),
-                                  ),
-                                ),
-                                _resendCooldown > 0
-                                    ? Text(
-                                        'Resend in $_resendCooldown s',
-                                        style: const TextStyle(
-                                          color: Colors.grey,
-                                          fontWeight: FontWeight.w600,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[100],
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(15),
+                                          bottomLeft: Radius.circular(15),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '+91',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.black87,
                                           fontFamily: 'Poppins',
                                         ),
-                                      )
-                                    : TextButton(
-                                        onPressed: authProvider.isLoading
-                                            ? null
-                                            : handleSendOtp,
-                                        child: const Text(
-                                          'Resend OTP',
-                                          style: TextStyle(
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: mobileController,
+                                        keyboardType: TextInputType.number,
+                                        enabled: !authProvider.isOtpSent,
+                                        style: const TextStyle(fontFamily: 'Poppins'),
+                                        decoration: InputDecoration(
+                                          labelText: 'Mobile Number',
+                                          labelStyle: const TextStyle(fontFamily: 'Poppins'),
+                                          hintText: 'Enter your whatsapp mobile number',
+                                          hintStyle: const TextStyle(fontFamily: 'Poppins'),
+                                          prefixIcon: const Icon(
+                                            Icons.person,
                                             color: primaryColor,
+                                          ),
+                                          border: const OutlineInputBorder(
+                                            borderRadius: BorderRadius.only(
+                                              topRight: Radius.circular(15),
+                                              bottomRight: Radius.circular(15),
+                                            ),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.grey[100],
+                                          focusedBorder: const OutlineInputBorder(
+                                            borderRadius: BorderRadius.only(
+                                              topRight: Radius.circular(15),
+                                              bottomRight: Radius.circular(15),
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: primaryColor,
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value?.isEmpty ?? true) {
+                                            return 'Please enter your whatsapp mobile number';
+                                          }
+                                          if (!RegExp(r'^[0-9]{10}$').hasMatch(value!)) {
+                                            return 'Please enter a valid 10-digit mobile number';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (authProvider.isOtpSent) ...[
+                                  const SizedBox(height: 20),
+                                  AnimatedOpacity(
+                                    opacity: authProvider.isOtpSent ? 1.0 : 0.0,
+                                    duration: const Duration(milliseconds: 500),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Enter Whatsapp OTP sent to +91${mobileController.text}',
+                                          style: const TextStyle(
+                                            color: primaryColor,
+                                            fontSize: 16,
                                             fontWeight: FontWeight.w600,
                                             fontFamily: 'Poppins',
                                           ),
                                         ),
+                                        const SizedBox(height: 10),
+                                        TextFormField(
+                                          controller: otpController,
+                                          keyboardType: TextInputType.number,
+                                          style: const TextStyle(fontFamily: 'Poppins'),
+                                          decoration: InputDecoration(
+                                            labelText: 'OTP',
+                                            labelStyle: const TextStyle(fontFamily: 'Poppins'),
+                                            hintText: 'Enter the 6-digit OTP',
+                                            hintStyle: const TextStyle(fontFamily: 'Poppins'),
+                                            prefixIcon: const Icon(
+                                              Icons.lock_outline,
+                                              color: primaryColor,
+                                            ),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                              borderSide: BorderSide.none,
+                                            ),
+                                            filled: true,
+                                            fillColor: Colors.grey[100],
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                              borderSide: const BorderSide(
+                                                color: primaryColor,
+                                                width: 2,
+                                              ),
+                                            ),
+                                          ),
+                                          validator: (value) {
+                                            if (value?.isEmpty ?? true) {
+                                              return 'Please enter the OTP';
+                                            }
+                                            if (!RegExp(r'^[0-9]{6}$').hasMatch(value!)) {
+                                              return 'OTP must be 6 digits';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            TextButton(
+                                              onPressed: authProvider.isLoading
+                                                  ? null
+                                                  : () => authProvider.resetOtpStatus(),
+                                              child: const Text(
+                                                'Change Number',
+                                                style: TextStyle(
+                                                  color: primaryColor,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontFamily: 'Poppins',
+                                                ),
+                                              ),
+                                            ),
+                                            _resendCooldown > 0
+                                                ? Text(
+                                                    'Resend in $_resendCooldown s',
+                                                    style: const TextStyle(
+                                                      color: Colors.grey,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontFamily: 'Poppins',
+                                                    ),
+                                                  )
+                                                : TextButton(
+                                                    onPressed: authProvider.isLoading
+                                                        ? null
+                                                        : handleSendOtp,
+                                                    child: const Text(
+                                                      'Resend OTP',
+                                                      style: TextStyle(
+                                                        color: primaryColor,
+                                                        fontWeight: FontWeight.w600,
+                                                        fontFamily: 'Poppins',
+                                                      ),
+                                                    ),
+                                                  ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Colors.green.withValues(alpha: 0.3),
+                                        width: 1,
                                       ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          color: Colors.green,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'OTP sent on WhatsApp from 8128109049',
+                                            style: TextStyle(
+                                              color: primaryColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'Poppins',
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 55,
+                                  child: ElevatedButton(
+                                    onPressed: authProvider.isLoading
+                                        ? null
+                                        : () {
+                                            if (_formKey.currentState!.validate()) {
+                                              if (!authProvider.isOtpSent) {
+                                                handleSendOtp();
+                                              } else {
+                                                handleVerifyOtp();
+                                              }
+                                            }
+                                          },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      elevation: 5,
+                                    ),
+                                    child: authProvider.isLoading
+                                        ? const CircularProgressIndicator(
+                                            color: Colors.white,
+                                          )
+                                        : Text(
+                                            authProvider.isOtpSent
+                                                ? 'VERIFY OTP'
+                                                : 'SEND OTP',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 1.5,
+                                              fontFamily: 'Poppins',
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
                               ],
                             ),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.green.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'OTP sent on WhatsApp from 8128109049',
-                                      style: TextStyle(
-                                        color: primaryColor,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'Poppins',
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 30),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 55,
-                            child: ElevatedButton(
-                              onPressed: authProvider.isLoading
-                                  ? null
-                                  : () {
-                                      if (_formKey.currentState!.validate()) {
-                                        authProvider.isOtpSent
-                                            ? handleVerifyOtp()
-                                            : handleSendOtp();
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                elevation: 5,
-                              ),
-                              child: authProvider.isLoading
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                  : Text(
-                                      authProvider.isOtpSent
-                                          ? 'VERIFY OTP'
-                                          : 'SEND OTP',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.5,
-                                        fontFamily: 'Poppins',
-                                      ),
-                                    ),
-                            ),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -453,3 +525,4 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 }
+
