@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pujanam/pages/splash/splash_screen.dart';
+import 'package:pujanam/providers/auth/auth_provider.dart';
 import 'package:pujanam/providers/category/category_provider.dart';
-import 'providers/product/product_provider.dart';
+
 import 'pages/home/home_screen.dart';
 import 'pages/orders/orders_screen.dart';
 import 'pages/profile/profile_screen.dart';
 import 'pages/wishlist/wishlist_screen.dart';
+import 'providers/product/product_provider.dart';
 import 'widgets/bottom navigation/app_bottom_navigation.dart';
 
 void main() {
@@ -14,6 +17,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: const PujnamApp(),
     ),
@@ -36,7 +40,8 @@ class PujnamApp extends StatelessWidget {
         fontFamily: 'Poppins',
         useMaterial3: true,
       ),
-      home: const MainNavigationScreen(),
+      home: const SplashScreen(),
+      //const MainNavigationScreen(),
     );
   }
 }
@@ -74,7 +79,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           return false;
         }
         final now = DateTime.now();
-        if (_lastPressed == null || now.difference(_lastPressed!) > const Duration(seconds: 2)) {
+        if (_lastPressed == null ||
+            now.difference(_lastPressed!) > const Duration(seconds: 2)) {
           _lastPressed = now;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -88,10 +94,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         return true;
       },
       child: Scaffold(
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: _screens,
-        ),
+        body: IndexedStack(index: _selectedIndex, children: _screens),
         bottomNavigationBar: AppBottomNavigation(
           selectedIndex: _selectedIndex,
           onDestinationSelected: _onDestinationSelected,

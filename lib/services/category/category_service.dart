@@ -1,21 +1,19 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
+import '../../core/constants/api_constants.dart';
 import '../../models/category/category_product_response_model.dart';
 import '../../models/category/category_response_model.dart';
 
 class CategoriesApiService {
-  static const String baseUrl =
-      'https://megaecomm.megascale.co.in/backend/api/shop';
-  static const String shopfrontToken = 'YOUR_SHOPIFY_TOKEN';
-  static const String storeId = '16';
-
   Future<List<CategoryModel>> fetchCollections() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/collections?limit=50'),
+      Uri.parse('${ApiConstants.baseUrl}/shop/collections?limit=50'),
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopfront-Token': shopfrontToken,
-        'x-store-id': storeId,
+        'X-Shopfront-Token': ApiConstants.shopfrontToken,
+        'x-store-id': ApiConstants.storeId,
       },
     );
 
@@ -25,11 +23,11 @@ class CategoriesApiService {
         return (data['data'] as List)
             .map((json) => CategoryModel.fromJson(json))
             .where((category) {
-          bool hasProducts = category.productCount != '0';
-          bool isPercentage = category.title.contains('%');
-          // Filters: product_count != "0", is_display == true, title without "%"
-          return category.isDisplay && hasProducts && !isPercentage;
-        })
+              bool hasProducts = category.productCount != '0';
+              bool isPercentage = category.title.contains('%');
+              // Filters: product_count != "0", is_display == true, title without "%"
+              return category.isDisplay && hasProducts && !isPercentage;
+            })
             .toList();
       }
       return [];
@@ -39,14 +37,14 @@ class CategoriesApiService {
   }
 
   Future<List<CategoryProductModel>> fetchProductsByCategory(
-      String handle,
-      ) async {
+    String handle,
+  ) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/collections/$handle'),
+      Uri.parse('${ApiConstants.baseUrl}/shop/collections/$handle'),
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopfront-Token': shopfrontToken,
-        'x-store-id': storeId,
+        'X-Shopfront-Token': ApiConstants.shopfrontToken,
+        'x-store-id': ApiConstants.storeId,
       },
     );
 
