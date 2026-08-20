@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-
 import '../../providers/category/category_provider.dart';
-import '../cart/cart.dart';
+import '../cart/cart_screen.dart';
 import 'category_product_list_screen.dart';
 
 class CategoryListScreen extends StatefulWidget {

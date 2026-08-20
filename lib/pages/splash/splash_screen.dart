@@ -70,9 +70,8 @@ class _SplashScreenState extends State<SplashScreen>
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => token != null && token.isNotEmpty
-                  ? MainNavigationScreen()
-                  //MainScreen() // Navigate to home if token exists
-                  : const LoginPage(), // Navigate to login if no token
+                  ? const MainNavigationScreen()
+                  : const LoginPage(),
             ),
           );
           Future.delayed(const Duration(milliseconds: 500), () {
