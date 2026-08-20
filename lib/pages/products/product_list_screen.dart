@@ -12,7 +12,7 @@ import '../../widgets/advanced_filter_widget.dart';
 import '../../widgets/product/pagination_loader.dart';
 import '../../widgets/product/product_card.dart';
 import '../../widgets/product/product_shimmer.dart';
-import '../cart/cart.dart';
+import '../cart/cart_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   final String title;

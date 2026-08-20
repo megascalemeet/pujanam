@@ -10,7 +10,7 @@ import '../../models/category/category_product_response_model.dart';
 import '../../providers/category/category_provider.dart';
 import '../../widgets/advanced_filter_widget.dart';
 import '../auth/login.dart';
-import '../cart/cart.dart';
+import '../cart/cart_screen.dart';
 
 class CategoryProductListScreen extends StatefulWidget {
   final String title;

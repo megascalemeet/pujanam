@@ -4,7 +4,8 @@ import 'package:pujanam/pages/splash/splash_screen.dart';
 import 'package:pujanam/providers/auth/auth_provider.dart';
 import 'package:pujanam/providers/category/category_provider.dart';
 import 'package:pujanam/providers/customer/customer_provider.dart';
-
+import 'package:pujanam/providers/orders/order_provider.dart';
+import 'package:pujanam/providers/cart/cart_provider.dart';
 import 'pages/home/home_screen.dart';
 import 'pages/orders/orders_screen.dart';
 import 'pages/profile/profile_screen.dart';
@@ -20,6 +21,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()..loadCart()),
       ],
       child: const PujnamApp(),
     ),

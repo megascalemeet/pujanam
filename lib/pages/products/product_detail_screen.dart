@@ -7,15 +7,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:provider/provider.dart';
+import '../../models/cart/cart_models.dart';
+import '../../providers/cart/cart_provider.dart';
 import '../../models/category/category_product_response_model.dart';
 import '../../models/product/product_detail_response_model.dart';
 import '../../models/product/product_response_model.dart';
-import '../../services/cart_service.dart';
 import '../../services/notification_services.dart';
 import '../../services/product/product_api_service.dart';
 import '../../widgets/recent_purchase_notification.dart';
 import '../auth/login.dart';
-import '../cart/cart.dart';
+import '../cart/cart_screen.dart';
 import 'product_list_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -148,27 +150,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _loadCartCount() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('customer_id');
-      if (customerId == null) return;
-
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://new-test.megascale.co.in/api/p1/cart?customer_id=$customerId',
-            ),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> cartData = json.decode(response.body);
-        final List<dynamic> cartItems = cartData['cart'] ?? [];
-        if (mounted) {
-          setState(() {
-            _cartCount = cartItems.length;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _cartCount = Provider.of<CartProvider>(context, listen: false).items.length;
+        });
       }
     } catch (e) {
       debugPrint('Error loading cart count: $e');
@@ -2060,10 +2045,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       });
 
       if (_productDetails == null || _productDetails!.variants.isEmpty) {
-        CartService.showCustomErrorNotification(
-          context,
-          'No variants available for this product.',
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No variants available for this product.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
@@ -2074,16 +2063,105 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       );
       final selectedVariantId = selectedVariant.id.toString();
 
-      await CartService.addToCart(
-        _productDetails,
-        context,
-        selectedWeight: _selectedWeight,
-        selectedPrice: _selectedPrice,
-        variantId: selectedVariantId,
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      await cartProvider.addToCart(
+        CartItem(
+          productId: _productDetails!.id,
+          variantId: selectedVariantId,
+          price: double.tryParse(_selectedPrice ?? '0.0') ?? 0.0,
+          compareAtPrice: double.tryParse(_productDetails!.compareAtPrice ?? '0.0') ?? 0.0,
+          quantity: 1,
+          sku: selectedVariant.sku ?? 'SKU-${_productDetails!.id}',
+          title: _productDetails!.title,
+          imageUrl: _productDetails!.imageUrl,
+          weight: _selectedWeight ?? '',
+        ),
       );
+
+      final success = await cartProvider.proceedToCheckout();
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: SizedBox(
+              height: 60,
+              child: Row(
+                children: [
+                  if (_productDetails!.imageUrl.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        _productDetails!.imageUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.image_not_supported, color: Colors.white),
+                      ),
+                    ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Added to Cart',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          _productDetails!.title,
+                          style: const TextStyle(color: Colors.white70),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            action: SnackBarAction(
+              label: 'View Cart',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CartScreen()),
+                );
+              },
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(cartProvider.errorMessage ?? 'Failed to update backend session'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
       await _loadCartCount();
     } catch (e) {
-      CartService.showCustomErrorNotification(context, e.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
