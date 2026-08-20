@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../main.dart';
 import '../auth/login.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -58,6 +59,10 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('accessToken');
+      String? platformToken = prefs.getString('platformToken');
+      print("accessToken is.....");
+      print("accessToken is : ${token}");
+      print("plteformToken is : ${platformToken}");
 
       // Navigate after animation
       Future.delayed(const Duration(seconds: 5), () {
@@ -65,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen>
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => token != null && token.isNotEmpty
-                  ? const LoginPage()
+                  ? MainNavigationScreen()
                   //MainScreen() // Navigate to home if token exists
                   : const LoginPage(), // Navigate to login if no token
             ),
