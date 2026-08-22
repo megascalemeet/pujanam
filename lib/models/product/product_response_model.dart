@@ -15,7 +15,11 @@ class ProductResponseModel {
       data: (json['data'] as List? ?? [])
           .map((e) => ProductModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
-      pagination: ProductPaginationModel.fromJson(json['pagination'] is Map ? Map<String, dynamic>.from(json['pagination']) : {}),
+      pagination: ProductPaginationModel.fromJson(
+        json['pagination'] is Map
+            ? Map<String, dynamic>.from(json['pagination'])
+            : {},
+      ),
     );
   }
 
@@ -39,8 +43,16 @@ class ProductPriceRangeModel {
 
   factory ProductPriceRangeModel.fromJson(Map<String, dynamic> json) {
     return ProductPriceRangeModel(
-      minVariantPrice: ProductPriceModel.fromJson(json['minVariantPrice'] is Map ? Map<String, dynamic>.from(json['minVariantPrice']) : {}),
-      maxVariantPrice: ProductPriceModel.fromJson(json['maxVariantPrice'] is Map ? Map<String, dynamic>.from(json['maxVariantPrice']) : {}),
+      minVariantPrice: ProductPriceModel.fromJson(
+        json['minVariantPrice'] is Map
+            ? Map<String, dynamic>.from(json['minVariantPrice'])
+            : {},
+      ),
+      maxVariantPrice: ProductPriceModel.fromJson(
+        json['maxVariantPrice'] is Map
+            ? Map<String, dynamic>.from(json['maxVariantPrice'])
+            : {},
+      ),
     );
   }
 
@@ -74,6 +86,8 @@ class ProductModel {
   final String createdAt;
   final String updatedAt;
 
+  String get price => variants.isNotEmpty ? variants[0].price.amount : '0.0';
+
   ProductModel({
     required this.id,
     required this.title,
@@ -105,24 +119,35 @@ class ProductModel {
       description: json['description']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
       metafields: json['metafields'] is List ? json['metafields'] : [],
-      variantIds: (json['variant_ids'] as List? ?? []).map((e) => int.tryParse(e.toString()) ?? 0).toList(),
+      variantIds: (json['variant_ids'] as List? ?? [])
+          .map((e) => int.tryParse(e.toString()) ?? 0)
+          .toList(),
       imageUrl: json['image_url']?.toString() ?? '',
       availableForSale: json['availableForSale'] == true,
       priceRange: json['priceRange'] != null && json['priceRange'] is Map
-          ? ProductPriceRangeModel.fromJson(Map<String, dynamic>.from(json['priceRange']))
+          ? ProductPriceRangeModel.fromJson(
+              Map<String, dynamic>.from(json['priceRange']),
+            )
           : null,
-      compareAtPrice: json['compareAtPrice'] != null && json['compareAtPrice'] is Map
-          ? ProductPriceModel.fromJson(Map<String, dynamic>.from(json['compareAtPrice']))
+      compareAtPrice:
+          json['compareAtPrice'] != null && json['compareAtPrice'] is Map
+          ? ProductPriceModel.fromJson(
+              Map<String, dynamic>.from(json['compareAtPrice']),
+            )
           : null,
       images: (json['images'] as List? ?? [])
           .map((e) => ProductImageModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
       tags: (json['tags'] as List? ?? []).map((e) => e.toString()).toList(),
-      avgRating: double.tryParse(json['avg_rating']?.toString() ?? '0.0') ?? 0.0,
+      avgRating:
+          double.tryParse(json['avg_rating']?.toString() ?? '0.0') ?? 0.0,
       totalReviews: int.tryParse(json['total_reviews']?.toString() ?? '0') ?? 0,
-      inventoryQuantity: int.tryParse(json['inventory_quantity']?.toString() ?? '0') ?? 0,
+      inventoryQuantity:
+          int.tryParse(json['inventory_quantity']?.toString() ?? '0') ?? 0,
       variants: (json['variants'] as List? ?? [])
-          .map((e) => ProductVariantModel.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) => ProductVariantModel.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList(),
       options: (json['options'] as List? ?? [])
           .map((e) => ProductOptionModel.fromJson(Map<String, dynamic>.from(e)))
@@ -162,10 +187,7 @@ class ProductOptionModel {
   final String name;
   final List<String> values;
 
-  ProductOptionModel({
-    required this.name,
-    required this.values,
-  });
+  ProductOptionModel({required this.name, required this.values});
 
   factory ProductOptionModel.fromJson(Map<String, dynamic> json) {
     return ProductOptionModel(
@@ -175,30 +197,21 @@ class ProductOptionModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'values': values,
-    };
+    return {'name': name, 'values': values};
   }
 }
 
 class ProductImageModel {
   final String url;
 
-  ProductImageModel({
-    required this.url,
-  });
+  ProductImageModel({required this.url});
 
   factory ProductImageModel.fromJson(Map<String, dynamic> json) {
-    return ProductImageModel(
-      url: json['url']?.toString() ?? '',
-    );
+    return ProductImageModel(url: json['url']?.toString() ?? '');
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'url': url,
-    };
+    return {'url': url};
   }
 }
 
@@ -235,19 +248,29 @@ class ProductVariantModel {
       title: json['title']?.toString() ?? '',
       availableForSale: json['availableForSale'] == true,
       sku: json['sku']?.toString(),
-      price: ProductPriceModel.fromJson(json['price'] is Map ? Map<String, dynamic>.from(json['price']) : {}),
-      compareAtPrice: json['compareAtPrice'] != null && json['compareAtPrice'] is Map
-          ? ProductPriceModel.fromJson(Map<String, dynamic>.from(json['compareAtPrice']))
+      price: ProductPriceModel.fromJson(
+        json['price'] is Map ? Map<String, dynamic>.from(json['price']) : {},
+      ),
+      compareAtPrice:
+          json['compareAtPrice'] != null && json['compareAtPrice'] is Map
+          ? ProductPriceModel.fromJson(
+              Map<String, dynamic>.from(json['compareAtPrice']),
+            )
           : null,
       selectedOptions: (json['selectedOptions'] as List? ?? [])
-          .map((e) => ProductSelectedOptionModel.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) => ProductSelectedOptionModel.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          )
           .toList(),
       image: json['image'] != null && json['image'] is Map
           ? ProductImageModel.fromJson(Map<String, dynamic>.from(json['image']))
           : null,
       weight: double.tryParse(json['weight']?.toString() ?? '0.0') ?? 0.0,
       weightUnit: json['weightUnit']?.toString() ?? 'KG',
-      inventoryQuantity: int.tryParse(json['inventoryQuantity']?.toString() ?? '0') ?? 0,
+      inventoryQuantity:
+          int.tryParse(json['inventoryQuantity']?.toString() ?? '0') ?? 0,
     );
   }
 
@@ -272,10 +295,7 @@ class ProductSelectedOptionModel {
   final String name;
   final String value;
 
-  ProductSelectedOptionModel({
-    required this.name,
-    required this.value,
-  });
+  ProductSelectedOptionModel({required this.name, required this.value});
 
   factory ProductSelectedOptionModel.fromJson(Map<String, dynamic> json) {
     return ProductSelectedOptionModel(
@@ -285,10 +305,7 @@ class ProductSelectedOptionModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'value': value,
-    };
+    return {'name': name, 'value': value};
   }
 }
 
@@ -296,10 +313,7 @@ class ProductPriceModel {
   final String amount;
   final String currencyCode;
 
-  ProductPriceModel({
-    required this.amount,
-    required this.currencyCode,
-  });
+  ProductPriceModel({required this.amount, required this.currencyCode});
 
   factory ProductPriceModel.fromJson(Map<String, dynamic> json) {
     return ProductPriceModel(
@@ -309,10 +323,7 @@ class ProductPriceModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'amount': amount,
-      'currencyCode': currencyCode,
-    };
+    return {'amount': amount, 'currencyCode': currencyCode};
   }
 }
 

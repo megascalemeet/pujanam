@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../models/product/product_response_model.dart';
+import '../../models/search/search_response_model.dart';
 import '../../providers/product/product_provider.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/advanced_filter_widget.dart';
@@ -150,22 +152,31 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
       // Brand filter
       if (_filterCriteria.selectedBrands?.isNotEmpty == true) {
-        final hasMatchingBrand = _filterCriteria.selectedBrands!.any((brand) =>
-            product.tags.any((tag) => tag.toLowerCase().contains(brand.toLowerCase())));
+        final hasMatchingBrand = _filterCriteria.selectedBrands!.any(
+          (brand) => product.tags.any(
+            (tag) => tag.toLowerCase().contains(brand.toLowerCase()),
+          ),
+        );
         if (!hasMatchingBrand) return false;
       }
 
       // Variant size filter
       if (_filterCriteria.selectedSizes?.isNotEmpty == true) {
-        final hasMatchingSize = product.variants.any((variant) =>
-            _filterCriteria.selectedSizes!.contains(variant.title));
+        final hasMatchingSize = product.variants.any(
+          (variant) => _filterCriteria.selectedSizes!.contains(variant.title),
+        );
         if (!hasMatchingSize) return false;
       }
 
       // Category filter
       if (_filterCriteria.selectedCategories?.isNotEmpty == true) {
-        final hasMatchingCategory = _filterCriteria.selectedCategories!.any((category) =>
-            product.options.any((opt) => opt.values.any((val) => val.toLowerCase().contains(category.toLowerCase()))));
+        final hasMatchingCategory = _filterCriteria.selectedCategories!.any(
+          (category) => product.options.any(
+            (opt) => opt.values.any(
+              (val) => val.toLowerCase().contains(category.toLowerCase()),
+            ),
+          ),
+        );
         if (!hasMatchingCategory) return false;
       }
 
@@ -183,15 +194,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
         break;
       case SortOption.priceLowToHigh:
         list.sort((a, b) {
-          final priceA = a.variants.isNotEmpty ? double.tryParse(a.variants[0].price.amount) ?? 0.0 : 0.0;
-          final priceB = b.variants.isNotEmpty ? double.tryParse(b.variants[0].price.amount) ?? 0.0 : 0.0;
+          final priceA = a.variants.isNotEmpty
+              ? double.tryParse(a.variants[0].price.amount) ?? 0.0
+              : 0.0;
+          final priceB = b.variants.isNotEmpty
+              ? double.tryParse(b.variants[0].price.amount) ?? 0.0
+              : 0.0;
           return priceA.compareTo(priceB);
         });
         break;
       case SortOption.priceHighToLow:
         list.sort((a, b) {
-          final priceA = a.variants.isNotEmpty ? double.tryParse(a.variants[0].price.amount) ?? 0.0 : 0.0;
-          final priceB = b.variants.isNotEmpty ? double.tryParse(b.variants[0].price.amount) ?? 0.0 : 0.0;
+          final priceA = a.variants.isNotEmpty
+              ? double.tryParse(a.variants[0].price.amount) ?? 0.0
+              : 0.0;
+          final priceB = b.variants.isNotEmpty
+              ? double.tryParse(b.variants[0].price.amount) ?? 0.0
+              : 0.0;
           return priceB.compareTo(priceA);
         });
         break;
@@ -199,10 +218,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
         list.sort((a, b) => b.avgRating.compareTo(a.avgRating));
         break;
       case SortOption.alphabeticalAZ:
-        list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        list.sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
         break;
       case SortOption.alphabeticalZA:
-        list.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        list.sort(
+          (a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()),
+        );
         break;
       case SortOption.popularity:
         list.sort((a, b) {
@@ -232,7 +255,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Future<void> fetchCartCount() async {
     try {
       final response = await http.get(
-        Uri.parse('https://new-test.megascale.co.in/api/p1/cart?customer_id=$customerId'),
+        Uri.parse(
+          'https://new-test.megascale.co.in/api/p1/cart?customer_id=$customerId',
+        ),
         headers: {'Content-Type': 'application/json'},
       );
       if (response.statusCode == 200) {
@@ -327,7 +352,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
         child: Padding(
           padding: EdgeInsets.all(40),
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color.fromRGBO(111, 10, 15, 1)),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Color.fromRGBO(111, 10, 15, 1),
+            ),
           ),
         ),
       );
@@ -398,57 +425,20 @@ class _ProductListScreenState extends State<ProductListScreen> {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final raw = _apiSearchProducts[index];
-                final String? imgUrl = raw['image'] is String
-                    ? raw['image'] as String
-                    : (raw['media'] is List && (raw['media'] as List).isNotEmpty)
-                        ? raw['media'][0]['previewSrc']?.toString()
-                        : null;
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final raw = _apiSearchProducts[index];
 
-                final product = Map<String, dynamic>.from(raw as Map);
+              // Use the SearchProduct model to normalize the data,
+              // matching the working logic in SearchScreen.
+              final searchProduct = SearchProduct.fromJson(
+                Map<String, dynamic>.from(raw as Map),
+              );
 
-                if (imgUrl != null && (product['media'] == null || (product['media'] as List?)?.isEmpty == true)) {
-                  product['media'] = [
-                    {'previewSrc': imgUrl, 'src': imgUrl}
-                  ];
-                }
-
-                final rawPrice = product['price'];
-                final rawPriceRange = product['priceRange'];
-                final priceAmount = product['amount'] ??
-                    (rawPrice is Map ? rawPrice['amount'] : rawPrice) ??
-                    (rawPriceRange is Map && rawPriceRange['minVariantPrice'] is Map
-                        ? rawPriceRange['minVariantPrice']['amount']
-                        : null);
-
-                if (product['variants'] == null || (product['variants'] as List?)?.isEmpty == true) {
-                  product['variants'] = priceAmount == null
-                      ? []
-                      : [
-                          {'price': priceAmount}
-                        ];
-                }
-
-                if (product['metafields'] == null) {
-                  final rawId = product['id']?.toString() ?? '';
-                  final hash = rawId.hashCode.abs();
-                  final rating = (3.0 + (hash % 20) / 10.0).clamp(1.0, 5.0);
-                  final count = 10 + (hash % 91);
-                  product['metafields'] = {
-                    'reviews.rating': '{"value":"${rating.toStringAsFixed(1)}"}',
-                    'reviews.rating_count': count.toString(),
-                  };
-                }
-
-                return ProductCard(
-                  product: product,
-                  isInitiallyInWishlist: false,
-                );
-              },
-              childCount: _apiSearchProducts.length,
-            ),
+              return ProductCard(
+                product: searchProduct.toProductCardMap(),
+                isInitiallyInWishlist: false,
+              );
+            }, childCount: _apiSearchProducts.length),
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -470,7 +460,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 color: Colors.black.withOpacity(0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
-              )
+              ),
             ],
           ),
           child: TextField(
@@ -492,7 +482,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     )
                   : null,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 15,
+              ),
             ),
             onChanged: (value) => setState(() {}),
           ),
@@ -517,9 +510,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     icon: const Icon(Icons.filter_list, size: 20),
                     label: Text(
                       _filterCriteria.hasActiveFilters
-                          ? (_sortOption != SortOption.none ? 'Filtered' : 'Filters')
-                          : (_sortOption == SortOption.none ? 'Sort & Filter' : _sortOption.displayName),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          ? (_sortOption != SortOption.none
+                                ? 'Filtered'
+                                : 'Filters')
+                          : (_sortOption == SortOption.none
+                                ? 'Sort & Filter'
+                                : _sortOption.displayName),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     style: ElevatedButton.styleFrom(
@@ -530,11 +530,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           ? Colors.white
                           : const Color.fromRGBO(111, 10, 15, 1),
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
-                          color: _filterCriteria.hasActiveFilters ? Colors.transparent : Colors.grey[300]!,
+                          color: _filterCriteria.hasActiveFilters
+                              ? Colors.transparent
+                              : Colors.grey[300]!,
                           width: 1,
                         ),
                       ),
@@ -542,7 +547,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   ),
                 ),
               ),
-              if (_filterCriteria.hasActiveFilters || _sortOption != SortOption.none) ...[
+              if (_filterCriteria.hasActiveFilters ||
+                  _sortOption != SortOption.none) ...[
                 const SizedBox(width: 12),
                 Container(
                   decoration: BoxDecoration(
@@ -564,13 +570,19 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     icon: const Icon(Icons.clear, size: 18),
                     label: const Text(
                       'Clear',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red[50],
                       foregroundColor: Colors.red[700],
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -585,7 +597,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  Widget _buildProductGrid(List<ProductModel> filteredList, bool isLoadingMore) {
+  Widget _buildProductGrid(
+    List<ProductModel> filteredList,
+    bool isLoadingMore,
+  ) {
     if (filteredList.isEmpty) {
       return const Center(
         child: Text(
@@ -607,16 +622,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final product = filteredList[index];
-                return ProductCard(
-                  product: product,
-                  isInitiallyInWishlist: false,
-                );
-              },
-              childCount: filteredList.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final product = filteredList[index];
+              return ProductCard(
+                product: product,
+                isInitiallyInWishlist: false,
+              );
+            }, childCount: filteredList.length),
           ),
         ),
         if (isLoadingMore) const SliverToBoxAdapter(child: PaginationLoader()),
@@ -651,23 +663,37 @@ class _ProductListScreenState extends State<ProductListScreen> {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 24),
+                const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.white,
+                  size: 24,
+                ),
                 if (cartItemCount > 0)
                   Positioned(
                     right: -8,
                     top: -6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.amber,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
                       child: Center(
                         child: Text(
                           cartItemCount.toString(),
-                          style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black),
+                          style: const TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ),
@@ -692,7 +718,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       if (provider.isLoading && provider.products.isEmpty) {
                         return const ProductShimmer();
                       }
-                      if (provider.errorMessage != null && provider.products.isEmpty) {
+                      if (provider.errorMessage != null &&
+                          provider.products.isEmpty) {
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -706,9 +733,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               ElevatedButton(
                                 onPressed: () => provider.loadInitialProducts(),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+                                  backgroundColor: const Color.fromRGBO(
+                                    111,
+                                    10,
+                                    15,
+                                    1,
+                                  ),
                                 ),
-                                child: const Text('Retry', style: TextStyle(color: Colors.white)),
+                                child: const Text(
+                                  'Retry',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ),
                             ],
                           ),
@@ -717,7 +752,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       // Populate filter options dynamically from loaded products
                       _updateFilterOptionFields(provider.products);
                       final filtered = _buildFilteredList(provider.products);
-                      return _buildProductGrid(filtered, provider.isLoadingMore);
+                      return _buildProductGrid(
+                        filtered,
+                        provider.isLoadingMore,
+                      );
                     },
                   ),
           ),

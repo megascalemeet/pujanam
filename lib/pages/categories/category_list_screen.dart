@@ -131,7 +131,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Container(
-                margin: const EdgeInsets.only(top: 32),
+                //margin: const EdgeInsets.only(top: 32),
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
                   color: Colors.white,

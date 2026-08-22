@@ -9,7 +9,8 @@ import '../../models/customer/customer_profile.dart';
 class CustomerApiService {
   static const _baseUrl =
       'https://api-checkout.store.nilkanthdham.in/api/v1/customer-portal';
-  static const _apiKey = 'mk_public_your_public_key';
+  static const _apiKey = 'mk_public_e6b43102';
+  //'mk_public_your_public_key';
   static const _storeOrigin = 'store.nilkanthdham.in';
 
   Future<Map<String, String>> _headers({bool json = false}) async {

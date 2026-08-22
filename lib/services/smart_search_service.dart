@@ -1,21 +1,22 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 class SmartSearchService {
-  static const String baseUrl = 'https://new-test.megascale.co.in/api/p1';
+  static const String baseUrl = 'https://store.nilkanthdham.in/api/search';
+  // 'https://new-test.megascale.co.in/api/p1';
 
-  Future<Map<String, dynamic>> searchProducts(String query, {int limit = 10}) async {
+  Future<Map<String, dynamic>> searchProducts(
+    String query, {
+    int limit = 10,
+  }) async {
     if (query.trim().isEmpty) {
-      return {
-        'products': [],
-        'collections': [],
-        'searchQuery': '',
-      };
+      return {'products': [], 'collections': [], 'searchQuery': ''};
     }
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/search?search=${Uri.encodeComponent(query)}&limit=$limit'),
+        Uri.parse('$baseUrl?q=${Uri.encodeComponent(query)}&limit=$limit'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -27,18 +28,10 @@ class SmartSearchService {
           'searchQuery': data['searchQuery'] ?? query,
         };
       } else {
-        return {
-          'products': [],
-          'collections': [],
-          'searchQuery': query,
-        };
+        return {'products': [], 'collections': [], 'searchQuery': query};
       }
     } catch (e) {
-      return {
-        'products': [],
-        'collections': [],
-        'searchQuery': query,
-      };
+      return {'products': [], 'collections': [], 'searchQuery': query};
     }
   }
 }

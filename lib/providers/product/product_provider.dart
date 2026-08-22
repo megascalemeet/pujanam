@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+
+import '../../models/product/add_review_model.dart';
 import '../../models/product/product_response_model.dart';
 import '../../services/product/product_api_service.dart';
 
 class ProductProvider with ChangeNotifier {
   final ProductApiService _apiService = ProductApiService();
+
+  // Best seller state
+  List<ProductModel> _bestSellerProducts = [];
+  bool _isBestSellerLoading = false;
+  String? _bestSellerErrorMessage;
 
   List<ProductModel> _products = [];
   int _currentPage = 1;
@@ -19,6 +26,11 @@ class ProductProvider with ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;
 
+  // Best seller getters
+  List<ProductModel> get bestSellerProducts => _bestSellerProducts;
+  bool get isBestSellerLoading => _isBestSellerLoading;
+  String? get bestSellerErrorMessage => _bestSellerErrorMessage;
+
   Future<void> loadInitialProducts() async {
     if (_isLoading) return;
     _isLoading = true;
@@ -28,7 +40,10 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.fetchProducts(page: _currentPage, limit: 10);
+      final response = await _apiService.fetchProducts(
+        page: _currentPage,
+        limit: 10,
+      );
       _products = response.data;
       _hasNextPage = response.pagination.hasNextPage;
       _errorMessage = null;
@@ -41,6 +56,8 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> loadMoreProducts() async {
+  // Existing pagination for general product list remains unchanged
+
     if (_isLoading || _isLoadingMore || !_hasNextPage) return;
     _isLoadingMore = true;
     _errorMessage = null;
@@ -48,7 +65,10 @@ class ProductProvider with ChangeNotifier {
 
     try {
       final nextPage = _currentPage + 1;
-      final response = await _apiService.fetchProducts(page: nextPage, limit: 10);
+      final response = await _apiService.fetchProducts(
+        page: nextPage,
+        limit: 10,
+      );
       _products.addAll(response.data);
       _currentPage = nextPage;
       _hasNextPage = response.pagination.hasNextPage;
@@ -63,5 +83,33 @@ class ProductProvider with ChangeNotifier {
 
   Future<void> refreshProducts() async {
     await loadInitialProducts();
+  }
+
+  // Submit a review through the API service
+  Future<bool> submitReview(AddReviewModel review) async {
+    try {
+      return await _apiService.addReview(review);
+    } catch (e) {
+      print(" submit review error :$e ");
+      // Propagate the error for UI handling
+      rethrow;
+    }
+  }
+
+  // Load best seller products (limit 6)
+  Future<void> loadBestSellerProducts() async {
+    if (_isBestSellerLoading) return;
+    _isBestSellerLoading = true;
+    _bestSellerErrorMessage = null;
+    notifyListeners();
+    try {
+      final response = await _apiService.fetchProducts(page: 1, limit: 6);
+      _bestSellerProducts = response.data.take(6).toList();
+    } catch (e) {
+      _bestSellerErrorMessage = e.toString();
+    } finally {
+      _isBestSellerLoading = false;
+      notifyListeners();
+    }
   }
 }

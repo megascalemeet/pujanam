@@ -1,11 +1,13 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import '../../core/constants/api_constants.dart';
 import '../../models/checkout/coupon_model.dart';
 
 class CheckoutApiService {
-  static const String _baseUrl = ApiConstants.checkoutBaseUrl;
+  static final String _baseUrl = ApiConstants.checkoutBaseUrl;
   static const String _merchantId = ApiConstants.checkoutMerchantId;
   static const String _apiKey = ApiConstants.checkoutApiKey;
 
@@ -24,14 +26,13 @@ class CheckoutApiService {
   }
 
   Future<Map<String, dynamic>> addAddressToCheckout(
-      String sessionToken, Map<String, dynamic> addressData) async {
+    String sessionToken,
+    Map<String, dynamic> addressData,
+  ) async {
     final url = '$_baseUrl/checkout/session/$sessionToken/address';
     final response = await http.patch(
       Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': _apiKey,
-      },
+      headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey},
       body: json.encode(addressData),
     );
 
@@ -39,13 +40,16 @@ class CheckoutApiService {
       return json.decode(response.body);
     } else {
       throw Exception(
-          'Failed to add address to checkout: ${response.statusCode}');
+        'Failed to add address to checkout: ${response.statusCode}',
+      );
     }
   }
 
   /// Saves the address into the customer portal profile
   Future<Map<String, dynamic>> saveAddressToCustomerPortal(
-      String platformToken, Map<String, dynamic> portalAddressData) async {
+    String platformToken,
+    Map<String, dynamic> portalAddressData,
+  ) async {
     final url = '$_baseUrl/v1/customer-portal/addresses';
     final response = await http.post(
       Uri.parse(url),
@@ -62,34 +66,31 @@ class CheckoutApiService {
       return json.decode(response.body);
     } else {
       throw Exception(
-          'Failed to save address to customer portal: ${response.statusCode}');
+        'Failed to save address to customer portal: ${response.statusCode}',
+      );
     }
   }
 
   /// Apply a coupon code to an active checkout session.
   Future<Map<String, dynamic>> applyCoupon(
-      String sessionToken,
-      String couponCode,
-      ) async {
+    String sessionToken,
+    String couponCode,
+  ) async {
     final url = '$_baseUrl/checkout/session/$sessionToken/discount';
 
     debugPrint('========== APPLY COUPON API ==========');
     debugPrint('URL: $url');
     debugPrint('Method: POST');
     debugPrint('Headers:');
-    debugPrint(jsonEncode({
-      'Content-Type': 'application/json',
-      'x-api-key': _apiKey,
-    }));
+    debugPrint(
+      jsonEncode({'Content-Type': 'application/json', 'x-api-key': _apiKey}),
+    );
     debugPrint('Request Body:');
     debugPrint(jsonEncode({'code': couponCode}));
 
     final response = await http.post(
       Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': _apiKey,
-      },
+      headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey},
       body: json.encode({'code': couponCode}),
     );
 
@@ -113,18 +114,18 @@ class CheckoutApiService {
 
   /// Remove / clear the applied coupon from an active checkout session.
   Future<Map<String, dynamic>> removeCoupon(
-      String sessionToken, String couponCode) async {
-    final url =
-        '$_baseUrl/checkout/session/$sessionToken/discount/$couponCode';
+    String sessionToken,
+    String couponCode,
+  ) async {
+    final url = '$_baseUrl/checkout/session/$sessionToken/discount/$couponCode';
     final response = await http.delete(
       Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': _apiKey,
-      },
+      headers: {'Content-Type': 'application/json', 'x-api-key': _apiKey},
     );
 
-    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+    if (response.statusCode == 200 ||
+        response.statusCode == 201 ||
+        response.statusCode == 204) {
       // 204 No Content is a valid success for DELETE
       if (response.body.isEmpty) return {'success': true};
       return json.decode(response.body);

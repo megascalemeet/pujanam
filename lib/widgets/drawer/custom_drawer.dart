@@ -4,7 +4,6 @@ import 'package:pujanam/pages/auth/login.dart';
 import 'package:pujanam/pages/categories/category_list_screen.dart';
 import 'package:pujanam/theme/app_color.dart';
 import 'package:pujanam/widgets/drawer/about_us.dart';
-import 'package:pujanam/widgets/drawer/blog.dart';
 import 'package:pujanam/widgets/drawer/contect_us.dart';
 import 'package:pujanam/widgets/drawer/policies/privacy_policy.dart';
 import 'package:pujanam/widgets/drawer/policies/return_policy.dart';
@@ -129,11 +128,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
         );
         break;
       case 'Blogs':
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const BlogListScreen()),
-        );
+        _launchURL('https://store.nilkanthdham.in/blogs', context);
+        // Navigator.pop(context);
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(builder: (context) => const BlogListScreen()),
+        // );
         break;
       case 'Bulk Order':
         _launchURL('https://store.nilkanthdham.in/bulk-order', context);

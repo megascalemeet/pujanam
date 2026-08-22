@@ -1,10 +1,13 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../models/product/product_response_model.dart';
 import '../../pages/auth/login.dart';
 import '../../pages/products/product_detail_screen.dart';
+import '../../theme/app_color.dart';
 
 class ProductCard extends StatefulWidget {
   final dynamic product;
@@ -20,7 +23,8 @@ class ProductCard extends StatefulWidget {
   State<ProductCard> createState() => _ProductCardState();
 }
 
-class _ProductCardState extends State<ProductCard> with SingleTickerProviderStateMixin {
+class _ProductCardState extends State<ProductCard>
+    with SingleTickerProviderStateMixin {
   bool _isInWishlist = false;
   bool _isAddingToWishlist = false;
   late AnimationController _animationController;
@@ -35,7 +39,10 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
     _animationController.forward();
     _isInWishlist = widget.isInitiallyInWishlist;
     _parseRating();
@@ -115,29 +122,45 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
 
       http.Response response;
       if (_isInWishlist) {
-        response = await http.post(
-          Uri.parse('https://new-test.megascale.co.in/api/p1/addtowishlist'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Connection': 'Keep-Alive',
-          },
-          body: json.encode({'customer_id': customerId, 'product_id': productId}),
-        ).timeout(const Duration(seconds: 30));
+        response = await http
+            .post(
+              Uri.parse(
+                'https://new-test.megascale.co.in/api/p1/addtowishlist',
+              ),
+              headers: {
+                'Content-Type': 'application/json',
+                'Connection': 'Keep-Alive',
+              },
+              body: json.encode({
+                'customer_id': customerId,
+                'product_id': productId,
+              }),
+            )
+            .timeout(const Duration(seconds: 30));
       } else {
-        response = await http.delete(
-          Uri.parse('https://new-test.megascale.co.in/api/p1/removewishlist'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Connection': 'Keep-Alive',
-          },
-          body: json.encode({'customer_id': customerId, 'product_id': productId}),
-        ).timeout(const Duration(seconds: 30));
+        response = await http
+            .delete(
+              Uri.parse(
+                'https://new-test.megascale.co.in/api/p1/removewishlist',
+              ),
+              headers: {
+                'Content-Type': 'application/json',
+                'Connection': 'Keep-Alive',
+              },
+              body: json.encode({
+                'customer_id': customerId,
+                'product_id': productId,
+              }),
+            )
+            .timeout(const Duration(seconds: 30));
       }
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isInWishlist ? 'Added to wishlist' : 'Removed from wishlist'),
+            content: Text(
+              _isInWishlist ? 'Added to wishlist' : 'Removed from wishlist',
+            ),
             backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
             duration: const Duration(seconds: 1),
           ),
@@ -207,20 +230,27 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
       final variants = widget.product['variants'] as List<dynamic>? ?? [];
       final firstVariant = variants.isNotEmpty ? variants[0] : null;
       if (firstVariant != null) {
-        priceAmount = firstVariant['price']?.toString() ?? firstVariant['price']?['amount']?.toString();
-        compareAtAmount = firstVariant['compareAtPrice']?.toString() ?? firstVariant['compareAtPrice']?['amount']?.toString();
+        priceAmount =
+            firstVariant['price']?.toString() ??
+            firstVariant['price']?['amount']?.toString();
+        compareAtAmount =
+            firstVariant['compareAtPrice']?.toString() ??
+            firstVariant['compareAtPrice']?['amount']?.toString();
       }
+
       final images = widget.product['media']?.isNotEmpty == true
           ? widget.product['media']
           : widget.product['images'] ?? [];
       if (images.isNotEmpty) {
-        displayImgUrl = images[0]['previewSrc']?.toString() ?? images[0]['src']?.toString();
+        displayImgUrl =
+            images[0]['previewSrc']?.toString() ?? images[0]['src']?.toString();
       }
     }
 
     final double price = double.tryParse(priceAmount ?? '0.0') ?? 0.0;
-    final double compareAtPrice = double.tryParse(compareAtAmount ?? '0.0') ?? 0.0;
-
+    final double compareAtPrice =
+        double.tryParse(compareAtAmount ?? '0.0') ?? 0.0;
+    final bool hasDiscount = compareAtPrice > price;
     return GestureDetector(
       onTap: () async {
         await Navigator.push(
@@ -252,7 +282,9 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                   child: Hero(
                     tag: 'product-${_productId()}',
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(15),
+                      ),
                       child: Image.network(
                         displayImgUrl ?? 'https://via.placeholder.com/150',
                         fit: BoxFit.cover,
@@ -302,7 +334,10 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE8F5E8),
                                 borderRadius: BorderRadius.circular(4),
@@ -326,7 +361,10 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                           const SizedBox(width: 4),
                           Text(
                             '($_reviewCount)',
-                            style: TextStyle(fontSize: fontSize - 4, color: Colors.grey[600]),
+                            style: TextStyle(
+                              fontSize: fontSize - 4,
+                              color: Colors.grey[600],
+                            ),
                           ),
                         ],
                       ),
@@ -335,6 +373,26 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                 ),
               ],
             ),
+            if (hasDiscount)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${((compareAtPrice - price) / compareAtPrice * 100).toStringAsFixed(0)}% OFF',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
               top: 8,
               right: 8,
@@ -347,7 +405,10 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                     color: Colors.white.withOpacity(0.9),
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                      ),
                     ],
                   ),
                   child: _isAddingToWishlist
@@ -356,12 +417,18 @@ class _ProductCardState extends State<ProductCard> with SingleTickerProviderStat
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color.fromRGBO(111, 10, 15, 1)),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color.fromRGBO(111, 10, 15, 1),
+                            ),
                           ),
                         )
                       : Icon(
-                          _isInWishlist ? Icons.favorite : Icons.favorite_border,
-                          color: _isInWishlist ? const Color.fromRGBO(111, 10, 15, 1) : Colors.grey[600],
+                          _isInWishlist
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: _isInWishlist
+                              ? const Color.fromRGBO(111, 10, 15, 1)
+                              : Colors.grey[600],
                           size: 16,
                         ),
                 ),
