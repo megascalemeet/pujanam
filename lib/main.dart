@@ -6,6 +6,8 @@ import 'package:pujanam/providers/category/category_provider.dart';
 import 'package:pujanam/providers/customer/customer_provider.dart';
 import 'package:pujanam/providers/orders/order_provider.dart';
 import 'package:pujanam/providers/cart/cart_provider.dart';
+import 'package:pujanam/providers/checkout/checkout_provider.dart';
+import 'package:pujanam/providers/payment_provider.dart';
 import 'pages/home/home_screen.dart';
 import 'pages/orders/orders_screen.dart';
 import 'pages/profile/profile_screen.dart';
@@ -23,6 +25,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()..loadCart()),
+        ChangeNotifierProvider(create: (_) => CheckoutProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentProvider()),
       ],
       child: const PujnamApp(),
     ),
@@ -52,15 +56,23 @@ class PujnamApp extends StatelessWidget {
 }
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  final int initialIndex;
+
+  const MainNavigationScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   DateTime? _lastPressed;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   final List<Widget> _screens = const [
     HomeScreen(),

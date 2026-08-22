@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 import '../../models/orders/order_models.dart';
 import '../../providers/orders/order_provider.dart';
+import '../order/order_details_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -603,7 +604,14 @@ class _OrdersScreenState extends State<OrdersScreen>
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () => _showOrderDetails(order),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OrderDetailsScreen(orderId: order.id),
+                  ),
+                );
+              },
               child: Padding(
                 padding: EdgeInsets.all(padding),
                 child: Column(

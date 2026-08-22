@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../models/auth/auth_models.dart';
 
+import '../../core/constants/api_constants.dart';
+
 class AuthApiService {
-  static const String _baseUrl = 'https://api-checkout.store.nilkanthdham.in/api';
-  static const String _merchantId = 'c63ffaef-8532-4906-af10-abb6ba1d5800';
+  static const String _baseUrl = ApiConstants.checkoutBaseUrl;
+  static const String _merchantId = ApiConstants.checkoutMerchantId;
+
 
   Future<SendOtpResponse> sendOtp(String phone) async {
     final url = '$_baseUrl/checkout/auth/phone/send-otp';
