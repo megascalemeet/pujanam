@@ -25,10 +25,9 @@ class CustomerProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      final results = await Future.wait([
-        _apiService.getProfile(),
-        _apiService.getAddresses(),
-      ]);
+      final profileFuture = _apiService.getProfile();
+      final addressesFuture = _apiService.getAddresses();
+      final results = await Future.wait([profileFuture, addressesFuture]);
       _profile = results[0] as CustomerProfile;
       _addresses = results[1] as List<CustomerAddress>;
     } catch (error) {
@@ -87,7 +86,7 @@ class CustomerProvider with ChangeNotifier {
       if (address != null) {
         final savedAddress = address.id.isEmpty
             ? await _apiService.addAddress(address)
-            : await _apiService.updateAddress(address.id, address.toJson());
+            : await _apiService.updateAddress(address.id, address);
         final index = _addresses.indexWhere(
           (item) => item.id == savedAddress.id,
         );

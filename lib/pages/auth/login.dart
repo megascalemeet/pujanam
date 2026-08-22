@@ -65,7 +65,7 @@ class _LoginPageState extends State<LoginPage>
 
   Future<void> handleSendOtp() async {
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.sendOtp('+91${mobileController.text}');
+    final success = await authProvider.sendOtp(mobileController.text);
     if (success) {
       _startResendCooldown();
     } else if (authProvider.errorMessage != null) {
@@ -73,7 +73,11 @@ class _LoginPageState extends State<LoginPage>
         SnackBar(
           content: Text(
             authProvider.errorMessage!,
-            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
+            style: const TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
           ),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 6),
@@ -86,7 +90,7 @@ class _LoginPageState extends State<LoginPage>
   Future<void> handleVerifyOtp() async {
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.verifyOtp(
-      '+91${mobileController.text}',
+      mobileController.text,
       otpController.text,
     );
     if (success) {
@@ -94,7 +98,11 @@ class _LoginPageState extends State<LoginPage>
         const SnackBar(
           content: Text(
             'Login Successful!',
-            style: TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
           ),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 6),
@@ -109,7 +117,11 @@ class _LoginPageState extends State<LoginPage>
         SnackBar(
           content: Text(
             authProvider.errorMessage!,
-            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
+            style: const TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            ),
           ),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 6),
@@ -148,9 +160,7 @@ class _LoginPageState extends State<LoginPage>
                   ),
                   child: Stack(
                     children: [
-                      Container(
-                        color: primaryColor,
-                      ),
+                      Container(color: primaryColor),
                       Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -227,6 +237,9 @@ class _LoginPageState extends State<LoginPage>
                                   alignment: Alignment.centerRight,
                                   child: GestureDetector(
                                     onTap: () {
+                                      context
+                                          .read<AuthProvider>()
+                                          .handleGuestLogin();
                                       Navigator.pushReplacement(
                                         context,
                                         MaterialPageRoute(
@@ -284,12 +297,19 @@ class _LoginPageState extends State<LoginPage>
                                         controller: mobileController,
                                         keyboardType: TextInputType.number,
                                         enabled: !authProvider.isOtpSent,
-                                        style: const TextStyle(fontFamily: 'Poppins'),
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                        ),
                                         decoration: InputDecoration(
                                           labelText: 'Mobile Number',
-                                          labelStyle: const TextStyle(fontFamily: 'Poppins'),
-                                          hintText: 'Enter your whatsapp mobile number',
-                                          hintStyle: const TextStyle(fontFamily: 'Poppins'),
+                                          labelStyle: const TextStyle(
+                                            fontFamily: 'Poppins',
+                                          ),
+                                          hintText:
+                                              'Enter your whatsapp mobile number',
+                                          hintStyle: const TextStyle(
+                                            fontFamily: 'Poppins',
+                                          ),
                                           prefixIcon: const Icon(
                                             Icons.person,
                                             color: primaryColor,
@@ -303,22 +323,27 @@ class _LoginPageState extends State<LoginPage>
                                           ),
                                           filled: true,
                                           fillColor: Colors.grey[100],
-                                          focusedBorder: const OutlineInputBorder(
-                                            borderRadius: BorderRadius.only(
-                                              topRight: Radius.circular(15),
-                                              bottomRight: Radius.circular(15),
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: primaryColor,
-                                              width: 2,
-                                            ),
-                                          ),
+                                          focusedBorder:
+                                              const OutlineInputBorder(
+                                                borderRadius: BorderRadius.only(
+                                                  topRight: Radius.circular(15),
+                                                  bottomRight: Radius.circular(
+                                                    15,
+                                                  ),
+                                                ),
+                                                borderSide: BorderSide(
+                                                  color: primaryColor,
+                                                  width: 2,
+                                                ),
+                                              ),
                                         ),
                                         validator: (value) {
                                           if (value?.isEmpty ?? true) {
                                             return 'Please enter your whatsapp mobile number';
                                           }
-                                          if (!RegExp(r'^[0-9]{10}$').hasMatch(value!)) {
+                                          if (!RegExp(
+                                            r'^[0-9]{10}$',
+                                          ).hasMatch(value!)) {
                                             return 'Please enter a valid 10-digit mobile number';
                                           }
                                           return null;
@@ -333,7 +358,8 @@ class _LoginPageState extends State<LoginPage>
                                     opacity: authProvider.isOtpSent ? 1.0 : 0.0,
                                     duration: const Duration(milliseconds: 500),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Enter Whatsapp OTP sent to +91${mobileController.text}',
@@ -348,24 +374,32 @@ class _LoginPageState extends State<LoginPage>
                                         TextFormField(
                                           controller: otpController,
                                           keyboardType: TextInputType.number,
-                                          style: const TextStyle(fontFamily: 'Poppins'),
+                                          style: const TextStyle(
+                                            fontFamily: 'Poppins',
+                                          ),
                                           decoration: InputDecoration(
                                             labelText: 'OTP',
-                                            labelStyle: const TextStyle(fontFamily: 'Poppins'),
+                                            labelStyle: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                            ),
                                             hintText: 'Enter the 6-digit OTP',
-                                            hintStyle: const TextStyle(fontFamily: 'Poppins'),
+                                            hintStyle: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                            ),
                                             prefixIcon: const Icon(
                                               Icons.lock_outline,
                                               color: primaryColor,
                                             ),
                                             border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(15),
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
                                               borderSide: BorderSide.none,
                                             ),
                                             filled: true,
                                             fillColor: Colors.grey[100],
                                             focusedBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(15),
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
                                               borderSide: const BorderSide(
                                                 color: primaryColor,
                                                 width: 2,
@@ -376,7 +410,9 @@ class _LoginPageState extends State<LoginPage>
                                             if (value?.isEmpty ?? true) {
                                               return 'Please enter the OTP';
                                             }
-                                            if (!RegExp(r'^[0-9]{6}$').hasMatch(value!)) {
+                                            if (!RegExp(
+                                              r'^[0-9]{6}$',
+                                            ).hasMatch(value!)) {
                                               return 'OTP must be 6 digits';
                                             }
                                             return null;
@@ -384,12 +420,14 @@ class _LoginPageState extends State<LoginPage>
                                         ),
                                         const SizedBox(height: 10),
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             TextButton(
                                               onPressed: authProvider.isLoading
                                                   ? null
-                                                  : () => authProvider.resetOtpStatus(),
+                                                  : () => authProvider
+                                                        .resetOtpStatus(),
                                               child: const Text(
                                                 'Change Number',
                                                 style: TextStyle(
@@ -404,19 +442,22 @@ class _LoginPageState extends State<LoginPage>
                                                     'Resend in $_resendCooldown s',
                                                     style: const TextStyle(
                                                       color: Colors.grey,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                       fontFamily: 'Poppins',
                                                     ),
                                                   )
                                                 : TextButton(
-                                                    onPressed: authProvider.isLoading
+                                                    onPressed:
+                                                        authProvider.isLoading
                                                         ? null
                                                         : handleSendOtp,
                                                     child: const Text(
                                                       'Resend OTP',
                                                       style: TextStyle(
                                                         color: primaryColor,
-                                                        fontWeight: FontWeight.w600,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                         fontFamily: 'Poppins',
                                                       ),
                                                     ),
@@ -434,15 +475,20 @@ class _LoginPageState extends State<LoginPage>
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.1),
+                                      color: Colors.green.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: Colors.green.withValues(alpha: 0.3),
+                                        color: Colors.green.withValues(
+                                          alpha: 0.3,
+                                        ),
                                         width: 1,
                                       ),
                                     ),
                                     child: const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Icon(
                                           Icons.info_outline,
@@ -475,7 +521,8 @@ class _LoginPageState extends State<LoginPage>
                                     onPressed: authProvider.isLoading
                                         ? null
                                         : () {
-                                            if (_formKey.currentState!.validate()) {
+                                            if (_formKey.currentState!
+                                                .validate()) {
                                               if (!authProvider.isOtpSent) {
                                                 handleSendOtp();
                                               } else {
@@ -525,4 +572,3 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 }
-

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/customer/customer_address.dart';
+import '../../providers/auth/auth_provider.dart';
 import '../../providers/customer/customer_provider.dart';
 import '../auth/login.dart';
 import 'edit_profile_screen.dart';
@@ -384,9 +384,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 18),
           FilledButton(
-            onPressed: customer.loadCustomer,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+              );
+            },
             style: FilledButton.styleFrom(backgroundColor: _brand),
-            child: const Text('Try again'),
+            child: const Text('Sign In'),
           ),
         ],
       ),
@@ -424,8 +429,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirm != true || !mounted) {
       return;
     }
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.clear();
+    await context.read<AuthProvider>().logout();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,

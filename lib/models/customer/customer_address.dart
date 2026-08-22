@@ -35,37 +35,42 @@ class CustomerAddress {
     final data = json['data'] ?? json;
     return CustomerAddress(
       id: data['id']?.toString() ?? '',
-      firstName: data['firstName']?.toString() ?? '',
-      lastName: data['lastName']?.toString() ?? '',
-      addressLine1: data['addressLine1']?.toString() ?? '',
-      addressLine2: data['addressLine2']?.toString(),
+      firstName: (data['first_name'] ?? data['firstName'] ?? '').toString(),
+      lastName: (data['last_name'] ?? data['lastName'] ?? '').toString(),
+      addressLine1: (data['address_line1'] ?? data['addressLine1'] ?? '')
+          .toString(),
+      addressLine2: (data['address_line2'] ?? data['addressLine2'])?.toString(),
       addressType: data['addressType']?.toString() ?? 'shipping',
       city: data['city'] ?? '',
       state: data['state'] ?? '',
-      postalCode: data['postalCode']?.toString() ?? '',
-      countryCode: data['countryCode']?.toString() ?? '',
-      phoneNumber: data['phoneNumber']?.toString() ?? '',
-      isDefault: data['isDefault'] == true,
+      postalCode: (data['pincode'] ?? data['postalCode'] ?? '').toString(),
+      countryCode: (data['country'] ?? data['countryCode'] ?? '').toString(),
+      phoneNumber: (data['phone'] ?? data['phoneNumber'] ?? '').toString(),
+      isDefault: data['is_default'] == true || data['isDefault'] == true,
       createdAt:
-          DateTime.tryParse(data['createdAt']?.toString() ?? '') ??
+          DateTime.tryParse(
+            (data['created_at'] ?? data['createdAt'] ?? '').toString(),
+          ) ??
           DateTime.now(),
       updatedAt:
-          DateTime.tryParse(data['updatedAt']?.toString() ?? '') ??
+          DateTime.tryParse(
+            (data['updated_at'] ?? data['updatedAt'] ?? '').toString(),
+          ) ??
           DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'firstName': firstName,
-    'lastName': lastName,
-    'addressLine1': addressLine1,
-    if (addressLine2 != null) 'addressLine2': addressLine2,
-    'addressType': addressType,
+    'first_name': firstName,
+    'last_name': lastName,
+    'address_line1': addressLine1,
+    if (addressLine2 != null) 'address_line2': addressLine2,
     'city': city,
     'state': state,
-    'postalCode': postalCode,
-    'countryCode': countryCode,
-    'phoneNumber': phoneNumber,
-    'isDefault': isDefault,
+    'pincode': postalCode,
+    'country': countryCode,
+    'phone': phoneNumber,
+    'is_default': isDefault,
+    'addressType': addressType,
   };
 }

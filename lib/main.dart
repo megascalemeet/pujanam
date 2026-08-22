@@ -56,7 +56,10 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('fcmToken', token ?? '');
   print("FCM Token : $token");
+  String accessToken = prefs.getString('accessToken') ?? '';
+  print("Access Token..... : $accessToken");
 
+  // await prefs.setString('accessToken.....', token ?? '');
   await requestNotificationPermission();
 
   runApp(

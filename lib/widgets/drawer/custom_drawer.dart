@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:pujanam/pages/auth/login.dart';
 import 'package:pujanam/pages/categories/category_list_screen.dart';
 import 'package:pujanam/theme/app_color.dart';
@@ -11,6 +12,8 @@ import 'package:pujanam/widgets/drawer/policies/shipping_policy.dart';
 import 'package:pujanam/widgets/drawer/policies/terms_condition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../providers/auth/auth_provider.dart';
 
 class CustomDrawer extends StatefulWidget {
   const CustomDrawer({super.key});
@@ -480,8 +483,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             ),
             ElevatedButton(
               onPressed: () async {
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
+                await context.read<AuthProvider>().logout();
                 if (context.mounted) {
                   Navigator.pop(context);
                   Navigator.pop(context);

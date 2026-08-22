@@ -36,42 +36,48 @@ class SendOtpData {
 }
 
 class VerifyOtpResponse {
-  final String accessToken;
-  final String platformToken;
+  // New API returns a single token field instead of accessToken/platformToken.
+  final String token;
+  // Customer information returned under "customer".
   final AuthUser user;
 
   VerifyOtpResponse({
-    required this.accessToken,
-    required this.platformToken,
+    required this.token,
     required this.user,
   });
 
   factory VerifyOtpResponse.fromJson(Map<String, dynamic> json) {
+    // The API may wrap data under "data" or return flat.
     final data = json['data'] as Map<String, dynamic>? ?? json;
     return VerifyOtpResponse(
-      accessToken: data['accessToken'] ?? '',
-      platformToken: data['platformToken'] ?? '',
-      user: AuthUser.fromJson(data['user'] ?? {}),
+      token: data['token'] ?? '',
+      user: AuthUser.fromJson(data['customer'] ?? {}),
     );
   }
 }
 
 class AuthUser {
   final String id;
+  final String firstName;
+  final String? lastName;
   final String phone;
-  final String email;
+  final String? email;
 
   AuthUser({
     required this.id,
+    required this.firstName,
+    this.lastName,
     required this.phone,
-    required this.email,
+    this.email,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
       id: json['id'] ?? '',
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'],
       phone: json['phone'] ?? '',
-      email: json['email'] ?? '',
+      email: json['email'],
     );
   }
 }
