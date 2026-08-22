@@ -221,36 +221,50 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         onRefresh: () async {
           if (mounted) {
             setState(() {
-              futureMessages = fetchMessages();
+              // futureMessages = fetchMessages();
             });
             _animationController.reset();
             _animationController.forward();
           }
         },
-        child: FutureBuilder<List<Message>>(
-          future: futureMessages,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildLoadingState();
-            } else if (snapshot.hasError) {
-              return _buildErrorState(snapshot.error);
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return _buildEmptyState();
-            }
-            final messages = snapshot.data!;
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  final message = messages[index];
-                  return _buildNotificationCard(context, message, index);
-                },
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'You don\'t have any notifications yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                height: 1.5,
               ),
-            );
-          },
+            ),
+          ),
         ),
+        // FutureBuilder<List<Message>>(
+        //   future: futureMessages,
+        //   builder: (context, snapshot) {
+        //     if (snapshot.connectionState == ConnectionState.waiting) {
+        //       return _buildLoadingState();
+        //     } else if (snapshot.hasError) {
+        //       return _buildErrorState(snapshot.error);
+        //     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        //       return _buildEmptyState();
+        //     }
+        //     final messages = snapshot.data!;
+        //     return FadeTransition(
+        //       opacity: _fadeAnimation,
+        //       child: ListView.builder(
+        //         padding: const EdgeInsets.all(16.0),
+        //         itemCount: messages.length,
+        //         itemBuilder: (context, index) {
+        //           final message = messages[index];
+        //           return _buildNotificationCard(context, message, index);
+        //         },
+        //       ),
+        //     );
+        //   },
+        // ),
       ),
     );
   }

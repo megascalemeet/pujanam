@@ -10,9 +10,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/cart/cart_models.dart';
 import '../../models/category/category_product_response_model.dart';
+import '../../models/product/add_review_model.dart';
 import '../../models/product/product_detail_response_model.dart';
 import '../../models/product/product_response_model.dart';
 import '../../providers/cart/cart_provider.dart';
+import '../../providers/product/product_provider.dart';
 import '../../services/notification_services.dart';
 import '../../services/product/product_api_service.dart';
 import '../../widgets/recent_purchase_notification.dart';
@@ -1450,21 +1452,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 8,
+        titlePadding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+        contentPadding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(8, 0, 16, 8),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
               'Write a Review',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             IconButton(
-              icon: Icon(Icons.close, size: 20, color: Colors.grey[600]),
+              icon: Icon(Icons.close, size: 18, color: Colors.grey[600]),
               onPressed: () => Navigator.pop(context),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ],
         ),
         content: SizedBox(
-          width: 350,
+          width: 320,
+          height: 240,
+          // 320,
+          //240, // Fixed height to prevent overflow
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1482,13 +1492,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             rating = index + 1.0;
                             showRatingError = false;
                           }),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.all(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2),
                             child: Icon(
                               index < rating ? Icons.star : Icons.star_border,
                               color: Colors.amber[600],
-                              size: 32,
+                              size: 28,
                             ),
                           ),
                         ),
@@ -1496,36 +1505,46 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                     if (showRatingError)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8, left: 8),
+                        padding: const EdgeInsets.only(top: 2, left: 8),
                         child: Text(
                           'Please select a rating',
                           style: TextStyle(
                             color: Colors.red[400],
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: reviewController,
-                maxLines: 4,
-                maxLength: maxReviewLength,
-                decoration: InputDecoration(
-                  hintText: 'Write your review here...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: Color.fromRGBO(111, 10, 15, 1),
-                      width: 2,
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: reviewController,
+                      maxLines: 2,
+                      minLines: 2,
+                      maxLength: maxReviewLength,
+                      decoration: InputDecoration(
+                        hintText: 'Write your review here...',
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 40,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color.fromRGBO(111, 10, 15, 1),
+                            width: 2,
+                          ),
+                        ),
+                        errorText: showReviewError
+                            ? 'Please write a review'
+                            : null,
+                        errorStyle: const TextStyle(fontSize: 11),
+                        counterStyle: const TextStyle(fontSize: 10),
+                      ),
                     ),
-                  ),
-                  errorText: showReviewError ? 'Please write a review' : null,
+                  ],
                 ),
               ),
             ],
@@ -1535,10 +1554,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               foregroundColor: const Color.fromRGBO(111, 10, 15, 1),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('Cancel', style: TextStyle(fontSize: 16)),
+            child: const Text('Cancel', style: TextStyle(fontSize: 14)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1552,6 +1573,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 hasError = true;
               }
               if (hasError) {
+                (context as Element).markNeedsBuild();
                 return;
               }
               submitReview(context, rating, reviewController.text.trim());
@@ -1559,15 +1581,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               elevation: 2,
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: const Text(
               'Submit',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -1580,40 +1604,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     double rating,
     String description,
   ) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('customer_id');
-      if (customerId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please login to submit a review'),
-            backgroundColor: Colors.red,
-          ),
+    final prefs = await SharedPreferences.getInstance();
+    final customerId = prefs.getString('customer_id');
+    if (customerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login to submit a review'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
         );
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        });
-        return;
-      }
+      });
+      return;
+    }
 
-      final pId = productId;
-      final response = await http
-          .post(
-            Uri.parse('https://new-test.megascale.co.in/api/p1/addreview'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({
-              'customer_id': customerId,
-              'product_id': pId,
-              'rating': rating.toInt(),
-              'description': description,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+    final review = AddReviewModel(
+      productId: int.tryParse(productId) ?? 0,
+      customerId: customerId,
+      rating: rating.toInt(),
+      description: description,
+      images: [],
+    );
 
-      if (response.statusCode == 200) {
+    try {
+      final success = await context.read<ProductProvider>().submitReview(
+        review,
+      );
+      if (success) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1624,7 +1645,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _loadAllDetails();
       }
     } catch (e) {
-      debugPrint('Error submitting review: $e');
+      print("add Review error:${e}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit review: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -2353,12 +2380,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               size: 20,
             ),
             SizedBox(width: 8),
-            Text(
-              'Frequently Asked Questions',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+            Expanded(
+              child: Text(
+                'Frequently Asked Questions',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
