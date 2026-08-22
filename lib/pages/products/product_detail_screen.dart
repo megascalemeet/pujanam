@@ -3,16 +3,16 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:provider/provider.dart';
 import '../../models/cart/cart_models.dart';
-import '../../providers/cart/cart_provider.dart';
 import '../../models/category/category_product_response_model.dart';
 import '../../models/product/product_detail_response_model.dart';
 import '../../models/product/product_response_model.dart';
+import '../../providers/cart/cart_provider.dart';
 import '../../services/notification_services.dart';
 import '../../services/product/product_api_service.dart';
 import '../../widgets/recent_purchase_notification.dart';
@@ -152,7 +152,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     try {
       if (mounted) {
         setState(() {
-          _cartCount = Provider.of<CartProvider>(context, listen: false).items.length;
+          _cartCount = Provider.of<CartProvider>(
+            context,
+            listen: false,
+          ).items.length;
         });
       }
     } catch (e) {
@@ -2069,7 +2072,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           productId: _productDetails!.id,
           variantId: selectedVariantId,
           price: double.tryParse(_selectedPrice ?? '0.0') ?? 0.0,
-          compareAtPrice: double.tryParse(_productDetails!.compareAtPrice ?? '0.0') ?? 0.0,
+          compareAtPrice:
+              double.tryParse(_productDetails!.compareAtPrice ?? '0.0') ?? 0.0,
           quantity: 1,
           sku: selectedVariant.sku ?? 'SKU-${_productDetails!.id}',
           title: _productDetails!.title,
@@ -2097,7 +2101,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         height: 40,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported, color: Colors.white),
+                            const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.white,
+                            ),
                       ),
                     ),
                   const SizedBox(width: 10),
@@ -2146,7 +2153,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(cartProvider.errorMessage ?? 'Failed to update backend session'),
+            content: Text(
+              cartProvider.errorMessage ?? 'Failed to update backend session',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -2156,10 +2165,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {

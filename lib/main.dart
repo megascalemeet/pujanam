@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pujanam/pages/splash/splash_screen.dart';
 import 'package:pujanam/providers/auth/auth_provider.dart';
+import 'package:pujanam/providers/cart/cart_provider.dart';
 import 'package:pujanam/providers/category/category_provider.dart';
+import 'package:pujanam/providers/checkout/checkout_provider.dart';
 import 'package:pujanam/providers/customer/customer_provider.dart';
 import 'package:pujanam/providers/orders/order_provider.dart';
-import 'package:pujanam/providers/cart/cart_provider.dart';
-import 'package:pujanam/providers/checkout/checkout_provider.dart';
 import 'package:pujanam/providers/payment_provider.dart';
+
 import 'pages/home/home_screen.dart';
 import 'pages/orders/orders_screen.dart';
 import 'pages/profile/profile_screen.dart';

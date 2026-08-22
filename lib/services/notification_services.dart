@@ -1,9 +1,11 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationServices {
-  static final NotificationServices _instance = NotificationServices._internal();
+  static final NotificationServices _instance =
+      NotificationServices._internal();
   factory NotificationServices() => _instance;
   NotificationServices._internal();
 
