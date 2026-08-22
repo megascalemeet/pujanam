@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pujanam/pages/categories/category_list_screen.dart';
 import 'package:pujanam/pages/categories/category_product_list_screen.dart';
+import 'package:pujanam/pages/notification/notification.dart';
 import 'package:pujanam/theme/app_color.dart';
 import 'package:pujanam/widgets/drawer/custom_drawer.dart';
 import 'package:shimmer/shimmer.dart';
@@ -211,38 +212,43 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.white,
                   size: iconSize,
                 ),
-                Positioned(
-                  right: -8,
-                  top: -10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.amber,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 20,
-                      minHeight: 20,
-                    ),
-                    child: const Center(
-                      child: Text(
-                        "3",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   right: -8,
+                //   top: -10,
+                //   child: Container(
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 6,
+                //       vertical: 2,
+                //     ),
+                //     decoration: BoxDecoration(
+                //       color: Colors.amber,
+                //       borderRadius: BorderRadius.circular(10),
+                //       border: Border.all(color: Colors.white, width: 1.5),
+                //     ),
+                //     constraints: const BoxConstraints(
+                //       minWidth: 20,
+                //       minHeight: 20,
+                //     ),
+                //     child: const Center(
+                //       child: Text(
+                //         "3",
+                //         style: TextStyle(
+                //           fontSize: 12,
+                //           fontWeight: FontWeight.bold,
+                //           color: Colors.black,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
               ],
             ),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => NotificationsScreen()),
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
