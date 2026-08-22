@@ -22,14 +22,16 @@ class CustomerProfile {
         ? json['data'] as Map<String, dynamic>
         : json;
     return CustomerProfile(
-      id: data['id'] ?? '',
+      id: data['id']?.toString() ?? '',
       email: data['email'],
-      phoneNumber: data['phoneNumber'] ?? '',
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
+      phoneNumber: (data['phone'] ?? data['phoneNumber'] ?? '').toString(),
+      firstName: (data['first_name'] ?? data['firstName'] ?? '').toString(),
+      lastName: (data['last_name'] ?? data['lastName'] ?? '').toString(),
       isVerified: data['isVerified'] ?? false,
       createdAt: DateTime.parse(
-        data['createdAt'] ?? DateTime.now().toIso8601String(),
+        data['created_at'] ??
+            data['createdAt'] ??
+            DateTime.now().toIso8601String(),
       ),
     );
   }

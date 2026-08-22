@@ -36,7 +36,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         (customer.addresses.isEmpty ? null : customer.addresses.first);
     _firstName.text = profile?.firstName ?? '';
     _lastName.text = profile?.lastName ?? '';
-    _email.text = profile?.email ?? '';
+    _email.text = profile?.email ?? '-';
     _phone.text = profile?.phoneNumber ?? '';
     _addressLine1.text = _currentAddress?.addressLine1 ?? '';
     _addressLine2.text = _currentAddress?.addressLine2 ?? '';
@@ -93,7 +93,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final success = await customer.saveProfileAndAddress(
       firstName: _firstName.text.trim(),
       lastName: _lastName.text.trim(),
-      email: _email.text.trim(),
+      email: (_email.text.trim().isEmpty || _email.text.trim() == '-')
+          ? null
+          : _email.text.trim(),
       phoneNumber: _phone.text.trim(),
       address: address,
     );
@@ -175,11 +177,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
-              _field(_addressLine1, 'Address Line 1'),
+              _field(
+                _addressLine1,
+                'Address Line 1',
+                required: _hasAddressInput,
+              ),
               _field(_addressLine2, 'Address Line 2'),
               Row(
                 children: [
-                  Expanded(child: _field(_city, 'City')),
+                  Expanded(
+                    child: _field(_city, 'City', required: _hasAddressInput),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: _field(
@@ -187,11 +195,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       'Pincode',
                       keyboardType: TextInputType.number,
                       pincode: true,
+                      required: _hasAddressInput,
                     ),
                   ),
                 ],
               ),
-              _field(_state, 'State'),
+              _field(_state, 'State', required: _hasAddressInput),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
