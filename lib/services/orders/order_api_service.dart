@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/api_constants.dart';
 import '../../models/orders/order_models.dart';
 
 class OrderApiService {
-  static const String _baseUrl = 'https://api-checkout.store.nilkanthdham.in/api';
-  static const String _apiKey = 'mk_public_e6b43102';
-  static const String _storeOrigin = 'store.nilkanthdham.in';
+  static const String _baseUrl = ApiConstants.checkoutBaseUrl;
+  static const String _apiKey = ApiConstants.checkoutApiKey;
+  static const String _storeOrigin = ApiConstants.storeOrigin;
+
 
   Future<MergedOrdersResponse> fetchOrders() async {
     final prefs = await SharedPreferences.getInstance();

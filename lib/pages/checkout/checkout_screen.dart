@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../providers/checkout/checkout_provider.dart';
+import '../../providers/customer/customer_provider.dart';
+import '../payment/payment_options_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Map<String, dynamic>? cartData;
@@ -19,7 +24,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isProcessing = false;
   bool _useStoredAddress = false;
-  bool _showCouponField = false;
+  bool _showCouponSection = false;
 
   // Form field controllers
   final TextEditingController _nameController = TextEditingController();
@@ -32,149 +37,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _pincodeController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _couponController = TextEditingController();
 
-  // Static/Dummy data
-  final Map<String, dynamic> _dummyCartData = {
-    'items': [
-      {
-        'title': 'Premium Basmati Rice',
-        'weight': '5 kg',
-        'quantity': 2,
-        'price': 450.00,
-        'image': 'https://via.placeholder.com/150',
-        'variantId': '1234567890',
-      },
-      {
-        'title': 'Organic Wheat Flour',
-        'weight': '2 kg',
-        'quantity': 1,
-        'price': 180.00,
-        'image': 'https://via.placeholder.com/150',
-        'variantId': '0987654321',
-      },
-      {
-        'title': 'Extra Virgin Olive Oil',
-        'weight': '1 L',
-        'quantity': 1,
-        'price': 850.00,
-        'image': 'https://via.placeholder.com/150',
-        'variantId': '1122334455',
-      },
-    ]
-  };
-
-  // Static coupon codes
-  final List<Map<String, String>> _dummyCouponCodes = [
-    {'code': 'SAVE10', 'fullText': 'SAVE10 - Get 10% off on your order'},
-    {'code': 'WELCOME20', 'fullText': 'WELCOME20 - Flat 20% off for new users'},
-    {'code': 'FREESHIP', 'fullText': 'FREESHIP - Free shipping on orders above ₹500'},
-    {'code': 'FLAT50', 'fullText': 'FLAT50 - Flat ₹50 off on minimum order of ₹300'},
-  ];
-
-  // Static profile data
-  final Map<String, dynamic> _dummyProfile = {
-    'email': 'john.doe@example.com',
-    'firstName': 'John',
-    'lastName': 'Doe',
-    'phone': '9876543210',
-    'address': '123, Main Street, Sector 12',
-    'city': 'Mumbai',
-    'state': 'Maharashtra',
-    'country': 'India',
-    'pincode': '400001',
-  };
+  static const Color _primaryColor = Color.fromRGBO(111, 10, 15, 1);
 
   @override
   void initState() {
     super.initState();
-    _loadDummyData();
-  }
-
-  void _loadDummyData() {
-    // Set mobile number
-    _phoneController.text = '9876543210';
-
-    // Load profile data
-    _fillFormWithProfile();
-
-    // Print cart data
-    final currentCart = widget.cartData ?? _dummyCartData;
-    if (currentCart['items'] != null) {
-      print('Cart Product Variant IDs:');
-      for (var item in currentCart['items']) {
-        print('Product: ${item['title']} - VariantID: ${item['variantId']}');
-      }
-    }
-  }
-
-  void _fillFormWithProfile() {
-    _nameController.text = _dummyProfile['firstName'] ?? '';
-    _lastnameController.text = _dummyProfile['lastName'] ?? '';
-    _phoneController.text = _dummyProfile['phone'] ?? '';
-    _emailController.text = _dummyProfile['email'] ?? '';
-    _addressController.text = _dummyProfile['address'] ?? '';
-    _address2Controller.text = '';
-    _cityController.text = _dummyProfile['city'] ?? '';
-    _provinceController.text = _dummyProfile['state'] ?? '';
-    _pincodeController.text = _dummyProfile['pincode'] ?? '';
-
-    print('CheckoutScreen Dummy Profile:');
-    print('Email: ${_dummyProfile['email']}');
-    print('FirstName: ${_dummyProfile['firstName']}');
-    print('LastName: ${_dummyProfile['lastName']}');
-    print('Phone: ${_dummyProfile['phone']}');
-    print('Address: ${_dummyProfile['address']}');
-    print('City: ${_dummyProfile['city']}');
-    print('State: ${_dummyProfile['state']}');
-    print('Country: ${_dummyProfile['country']}');
-    print('Pincode: ${_dummyProfile['pincode']}');
-  }
-
-  void _clearForm() {
-    _nameController.clear();
-    _lastnameController.clear();
-    _addressController.clear();
-    _address2Controller.clear();
-    _cityController.clear();
-    _provinceController.clear();
-    _pincodeController.clear();
-    _emailController.text = _dummyProfile['email'] ?? '';
-    _phoneController.text = '9876543210';
-  }
-
-  void _copyCouponCode(String code) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Coupon "$code" copied to clipboard'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  double get _totalAmount {
-    if (widget.totalAmount != null) {
-      return widget.totalAmount!;
-    }
-    double total = 0;
-    final currentCart = widget.cartData ?? _dummyCartData;
-    for (var item in currentCart['items'] ?? []) {
-      final price = item['price'];
-      final quantity = item['quantity'];
-      double itemPrice = 0.0;
-      if (price is num) {
-        itemPrice = price.toDouble();
-      } else if (price is String) {
-        itemPrice = double.tryParse(price) ?? 0.0;
-      }
-      int itemQty = 0;
-      if (quantity is num) {
-        itemQty = quantity.toInt();
-      } else if (quantity is String) {
-        itemQty = int.tryParse(quantity) ?? 0;
-      }
-      total += itemPrice * itemQty;
-    }
-    return total;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<CheckoutProvider>(context, listen: false).fetchCoupons();
+    });
   }
 
   @override
@@ -189,7 +61,152 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _pincodeController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _couponController.dispose();
     super.dispose();
+  }
+
+  void _fillFormWithProfile() {
+    final customerProvider =
+        Provider.of<CustomerProvider>(context, listen: false);
+    final profile = customerProvider.profile;
+    final address = customerProvider.addresses.isNotEmpty
+        ? customerProvider.addresses.first
+        : null;
+
+    _nameController.text = address?.firstName ?? '';
+    _lastnameController.text = address?.lastName ?? '';
+    _phoneController.text = address?.phoneNumber ?? '';
+    _emailController.text = profile?.email ?? '';
+    _addressController.text = address?.addressLine1 ?? '';
+    _address2Controller.text = address?.addressLine2 ?? '';
+    _cityController.text = address?.city ?? '';
+    _provinceController.text = address?.state ?? '';
+    _stateController.text = address?.state ?? '';
+    _pincodeController.text = address?.postalCode ?? '';
+  }
+
+  void _clearForm() {
+    _nameController.clear();
+    _lastnameController.clear();
+    _addressController.clear();
+    _address2Controller.clear();
+    _cityController.clear();
+    _provinceController.clear();
+    _stateController.clear();
+    _pincodeController.clear();
+
+    final customerProvider =
+        Provider.of<CustomerProvider>(context, listen: false);
+    final profile = customerProvider.profile;
+    _emailController.text = profile?.email ?? '';
+    _phoneController.text = profile?.phoneNumber ?? '';
+  }
+
+  double get _totalAmount {
+    if (widget.totalAmount != null) return widget.totalAmount!;
+    double total = 0;
+    for (var item in (widget.cartData ?? const {})['items'] ?? []) {
+      final price = item['price'];
+      final quantity = item['quantity'];
+      double itemPrice = price is num ? price.toDouble() : (double.tryParse(price?.toString() ?? '') ?? 0.0);
+      int itemQty = quantity is num ? quantity.toInt() : (int.tryParse(quantity?.toString() ?? '') ?? 0);
+      total += itemPrice * itemQty;
+    }
+    return total;
+  }
+
+  void _showSnack(String message, {Color color = Colors.red}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _applyCoupon() async {
+    final code = _couponController.text.trim();
+    final checkoutProvider =
+        Provider.of<CheckoutProvider>(context, listen: false);
+    final success = await checkoutProvider.applyCoupon(code);
+    if (mounted) {
+      if (success) {
+        _couponController.clear();
+        _showSnack(
+            checkoutProvider.couponSuccess ?? 'Coupon applied!',
+            color: Colors.green);
+      } else {
+        _showSnack(checkoutProvider.couponError ?? 'Invalid coupon code.');
+      }
+    }
+  }
+
+  Future<void> _removeCoupon() async {
+    final checkoutProvider =
+        Provider.of<CheckoutProvider>(context, listen: false);
+    await checkoutProvider.removeCoupon();
+    if (mounted) {
+      _showSnack('Coupon removed.', color: Colors.grey[700]!);
+    }
+  }
+
+  void _applyListedCoupon(String code) {
+    _couponController.text = code;
+    _applyCoupon();
+  }
+
+  Future<void> _placeOrder() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isProcessing = true);
+
+    final checkoutProvider =
+        Provider.of<CheckoutProvider>(context, listen: false);
+    final addressData = {
+      "addressType": "shipping",
+      "address1": _addressController.text.trim(),
+      "city": _cityController.text.trim(),
+      "province": _provinceController.text.trim(),
+      "country": "India",
+      "zip": _pincodeController.text.trim(),
+      "firstName": _nameController.text.trim(),
+      "lastName": _lastnameController.text.trim(),
+      "phone": _phoneController.text.trim(),
+      "saveToUserAddresses": !_useStoredAddress,
+    };
+
+    final success = await checkoutProvider.addAddressToCheckout(addressData);
+
+    if (!mounted) return;
+
+    if (!success) {
+      _showSnack(
+          checkoutProvider.errorMessage ?? 'Could not save your address. Please try again.');
+      setState(() => _isProcessing = false);
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final sessionToken = prefs.getString('checkout_session_token') ?? '';
+
+    setState(() => _isProcessing = false);
+
+    if (!mounted) return;
+
+    if (sessionToken.isEmpty) {
+      _showSnack('Your cart session has expired. Please add items and try again.');
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentOptionsScreen(sessionToken: sessionToken),
+      ),
+    );
   }
 
   @override
@@ -210,7 +227,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+        backgroundColor: _primaryColor,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
         ),
@@ -223,6 +240,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ─── Shipping Address ────────────────────────────────────
                   Text(
                     'Shipping Address',
                     style: TextStyle(
@@ -231,52 +249,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       color: Colors.grey[800],
                     ),
                   ),
-                  SizedBox(height: isLargeScreen ? 15 : 10),
-                  Column(
+                  SizedBox(height: isLargeScreen ? 10 : 8),
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Radio<bool>(
-                            value: true,
-                            groupValue: _useStoredAddress,
-                            onChanged: (value) {
-                              setState(() {
-                                _useStoredAddress = value!;
-                                if (_useStoredAddress) {
-                                  _fillFormWithProfile();
-                                } else {
-                                  _clearForm();
-                                }
-                              });
-                            },
-                            activeColor: const Color.fromRGBO(111, 10, 15, 1),
-                          ),
-                          const Text('Use Saved Address',
-                              style: TextStyle(fontSize: 16)),
-                        ],
+                      Radio<bool>(
+                        value: true,
+                        groupValue: _useStoredAddress,
+                        onChanged: (value) {
+                          setState(() {
+                            _useStoredAddress = value!;
+                            if (_useStoredAddress) {
+                              _fillFormWithProfile();
+                            } else {
+                              _clearForm();
+                            }
+                          });
+                        },
+                        activeColor: _primaryColor,
                       ),
-                      Row(
-                        children: [
-                          Radio<bool>(
-                            value: false,
-                            groupValue: _useStoredAddress,
-                            onChanged: (value) {
-                              setState(() {
-                                _useStoredAddress = value!;
-                                if (!_useStoredAddress) {
-                                  _clearForm();
-                                }
-                              });
-                            },
-                            activeColor: const Color.fromRGBO(111, 10, 15, 1),
-                          ),
-                          const Text('Enter New Address',
-                              style: TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
+                      const Text('Use Saved Address',
+                          style: TextStyle(fontSize: 16)),
                     ],
                   ),
+                  Row(
+                    children: [
+                      Radio<bool>(
+                        value: false,
+                        groupValue: _useStoredAddress,
+                        onChanged: (value) {
+                          setState(() {
+                            _useStoredAddress = value!;
+                            if (!_useStoredAddress) _clearForm();
+                          });
+                        },
+                        activeColor: _primaryColor,
+                      ),
+                      const Text('Enter New Address',
+                          style: TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Container(
                     padding: EdgeInsets.all(isLargeScreen ? 24 : 16),
                     decoration: BoxDecoration(
@@ -310,7 +322,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 4.0),
                                   child:
-                                  _buildTextField(_cityController, 'City'),
+                                      _buildTextField(_cityController, 'City'),
                                 ),
                               ),
                               SizedBox(width: isLargeScreen ? 16 : 8),
@@ -330,7 +342,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             context,
                             [
                               _buildTextField(_provinceController, 'State'),
-                              _buildTextField(_phoneController, 'Phone Number',
+                              _buildTextField(
+                                  _phoneController, 'Phone Number',
                                   keyboardType: TextInputType.phone),
                             ],
                             isLargeScreen,
@@ -340,197 +353,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ),
                   SizedBox(height: isLargeScreen ? 30 : 20),
-                  Text(
-                    'Coupon Codes',
-                    style: TextStyle(
-                      fontSize: isLargeScreen ? 24 : 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  SizedBox(height: isLargeScreen ? 15 : 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(15),
-                            onTap: () {
-                              setState(() {
-                                _showCouponField = !_showCouponField;
-                              });
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.all(isLargeScreen ? 16 : 12),
-                              child: Row(
-                                children: [
-                                  Checkbox(
-                                    value: _showCouponField,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _showCouponField = value!;
-                                      });
-                                    },
-                                    activeColor: const Color.fromRGBO(111, 10, 15, 1),
-                                    checkColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                  Text(
-                                    'Show Available Coupons',
-                                    style: TextStyle(
-                                      fontSize: isLargeScreen ? 16 : 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[800],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        AnimatedCrossFade(
-                          firstChild: const SizedBox.shrink(),
-                          secondChild: Padding(
-                            padding: EdgeInsets.only(
-                              left: isLargeScreen ? 16 : 12,
-                              right: isLargeScreen ? 16 : 12,
-                              bottom: isLargeScreen ? 16 : 12,
-                            ),
-                            child: _dummyCouponCodes.isEmpty
-                                ? Text(
-                              'No coupons available',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: isLargeScreen ? 16 : 14,
-                              ),
-                            )
-                                : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _dummyCouponCodes.length,
-                              itemBuilder: (context, index) {
-                                final coupon = _dummyCouponCodes[index];
-                                final code = coupon['code']!;
-                                final fullText = coupon['fullText']!;
-                                return Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      fullText,
-                                      style: TextStyle(
-                                        fontSize: isLargeScreen
-                                            ? 16
-                                            : 14,
-                                        color: Colors.black,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                        height: isLargeScreen
-                                            ? 8
-                                            : 4),
-                                    Container(
-                                      margin: EdgeInsets.only(
-                                          bottom: isLargeScreen
-                                              ? 12
-                                              : 8),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: isLargeScreen
-                                              ? 12
-                                              : 8,
-                                          vertical: isLargeScreen
-                                              ? 8
-                                              : 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[50],
-                                        borderRadius:
-                                        BorderRadius.circular(10),
-                                        border: Border.all(
-                                            color: Colors.grey[200]!),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              code,
-                                              style: TextStyle(
-                                                fontSize:
-                                                isLargeScreen
-                                                    ? 16
-                                                    : 14,
-                                                fontWeight:
-                                                FontWeight
-                                                    .bold,
-                                                color: Colors
-                                                    .grey[800],
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(
-                                              width: isLargeScreen
-                                                  ? 16
-                                                  : 8),
-                                          ElevatedButton(
-                                            onPressed: () =>
-                                                _copyCouponCode(
-                                                    code),
-                                            style: ElevatedButton
-                                                .styleFrom(
-                                              backgroundColor:
-                                              const Color.fromRGBO(
-                                                  111,
-                                                  10,
-                                                  15,
-                                                  1),
-                                              shape:
-                                              RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius
-                                                    .circular(
-                                                    8),
-                                              ),
-                                            ),
-                                            child: Icon(
-                                              Icons.copy,
-                                              color: Colors.white,
-                                              size: isLargeScreen
-                                                  ? 20
-                                                  : 18,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                          crossFadeState: _showCouponField
-                              ? CrossFadeState.showSecond
-                              : CrossFadeState.showFirst,
-                          duration: const Duration(milliseconds: 300),
-                        ),
-                      ],
-                    ),
-                  ),
+
+                  // ─── Apply Coupon ────────────────────────────────────────
+                  _buildCouponSection(isLargeScreen),
                   SizedBox(height: isLargeScreen ? 30 : 20),
+
+                  // ─── Order Summary ───────────────────────────────────────
                   Text(
                     'Order Summary',
                     style: TextStyle(
@@ -540,73 +368,117 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                   ),
                   SizedBox(height: isLargeScreen ? 15 : 10),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: (widget.cartData ?? _dummyCartData)['items']?.length ?? 0,
-                    itemBuilder: (context, index) {
-                      var item = (widget.cartData ?? _dummyCartData)['items'][index];
-                      return _buildOrderItem(item, isLargeScreen);
-                    },
-                  ),
+                  if ((widget.cartData?['items'] as List?)?.isNotEmpty ?? false)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount:
+                          (widget.cartData?['items'] as List?)?.length ?? 0,
+                      itemBuilder: (context, index) {
+                        var item =
+                            (widget.cartData!['items'] as List)[index];
+                        return _buildOrderItem(item, isLargeScreen);
+                      },
+                    ),
                   SizedBox(height: isLargeScreen ? 30 : 20),
+
+                  // ─── Total + Place Order ─────────────────────────────────
                   Container(
                     padding: EdgeInsets.all(isLargeScreen ? 24 : 20),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.white,
                       borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(30)),
+                          BorderRadius.vertical(top: Radius.circular(30)),
                     ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Consumer<CheckoutProvider>(
+                      builder: (context, cp, _) {
+                        final discount = cp.discountAmount;
+                        final displayTotal = _totalAmount - discount;
+                        return Column(
                           children: [
-                            Text(
-                              'Total Amount:',
-                              style: TextStyle(
-                                fontSize: isLargeScreen ? 20 : 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[800],
+                            if (discount > 0) ...[
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Subtotal:',
+                                      style: TextStyle(
+                                          fontSize: isLargeScreen ? 16 : 14,
+                                          color: Colors.grey[600])),
+                                  Text(
+                                    '₹${_totalAmount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                        fontSize: isLargeScreen ? 18 : 16,
+                                        color: Colors.grey[600]),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Coupon Discount:',
+                                      style: TextStyle(
+                                          fontSize: isLargeScreen ? 16 : 14,
+                                          color: Colors.green[700])),
+                                  Text(
+                                    '-₹${discount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                        fontSize: isLargeScreen ? 18 : 16,
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 20),
+                            ],
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Total Amount:',
+                                    style: TextStyle(
+                                        fontSize: isLargeScreen ? 20 : 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey[800])),
+                                Text(
+                                  '₹${(displayTotal > 0 ? displayTotal : _totalAmount).toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                      fontSize: isLargeScreen ? 28 : 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: _primaryColor),
+                                ),
+                              ],
                             ),
-                            Text(
-                              '₹${_totalAmount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontSize: isLargeScreen ? 28 : 24,
-                                fontWeight: FontWeight.bold,
-                                color: const Color.fromRGBO(111, 10, 15, 1),
+                            SizedBox(height: isLargeScreen ? 25 : 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isProcessing ? null : _placeOrder,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _primaryColor,
+                                  minimumSize: Size(
+                                      double.infinity,
+                                      isLargeScreen ? 60 : 56),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15)),
+                                ),
+                                child: _isProcessing
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white)
+                                    : Text(
+                                        'Place Order',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: isLargeScreen ? 20 : 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
-                        ),
-                        SizedBox(height: isLargeScreen ? 25 : 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isProcessing ? null : _placeOrder,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                              const Color.fromRGBO(111, 10, 15, 1),
-                              minimumSize: Size(
-                                  double.infinity, isLargeScreen ? 60 : 56),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15)),
-                            ),
-                            child: _isProcessing
-                                ? const CircularProgressIndicator(
-                                color: Colors.white)
-                                : Text(
-                              'Place Order',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isLargeScreen ? 20 : 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -614,6 +486,374 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ─── Coupon Section ──────────────────────────────────────────────────────
+  Widget _buildCouponSection(bool isLargeScreen) {
+    return Consumer<CheckoutProvider>(
+      builder: (context, cp, _) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header row ──
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(15),
+                  onTap: () {
+                    setState(() => _showCouponSection = !_showCouponSection);
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: isLargeScreen ? 20 : 16,
+                        vertical: isLargeScreen ? 16 : 14),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.local_offer_outlined,
+                              color: _primaryColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Apply Coupon',
+                                style: TextStyle(
+                                  fontSize: isLargeScreen ? 16 : 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                              if (cp.hasCouponApplied)
+                                Text(
+                                  '${cp.appliedCouponCode} applied',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.green,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (cp.hasCouponApplied)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'APPLIED',
+                              style: TextStyle(
+                                  color: Colors.green[700],
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else
+                          Icon(
+                            _showCouponSection
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: Colors.grey[500],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── Applied coupon chip ──
+              if (cp.hasCouponApplied)
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: isLargeScreen ? 20 : 16,
+                    right: isLargeScreen ? 20 : 16,
+                    bottom: 14,
+                  ),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.green[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle,
+                            color: Colors.green, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${cp.appliedCouponCode} applied successfully!',
+                            style: const TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: cp.isCouponLoading ? null : _removeCoupon,
+                          child: cp.isCouponLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.green))
+                              : const Icon(Icons.close,
+                                  color: Colors.green, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // ── Expandable panel ──
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: EdgeInsets.only(
+                    left: isLargeScreen ? 20 : 16,
+                    right: isLargeScreen ? 20 : 16,
+                    bottom: isLargeScreen ? 20 : 16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Input row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _couponController,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                hintText: 'Enter coupon code',
+                                hintStyle: TextStyle(color: Colors.grey[400]),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 12),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey[300]!),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      const BorderSide(color: _primaryColor),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed:
+                                  cp.isCouponLoading ? null : _applyCoupon,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _primaryColor,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20),
+                              ),
+                              child: cp.isCouponLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white))
+                                  : const Text('Apply',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Available coupons list
+                      if (cp.isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(
+                                color: _primaryColor),
+                          ),
+                        )
+                      else if (cp.coupons.isNotEmpty) ...[
+                        Text(
+                          'Available Coupons',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...cp.coupons.map((coupon) =>
+                            _buildCouponCard(coupon, cp, isLargeScreen)),
+                      ],
+                    ],
+                  ),
+                ),
+                crossFadeState: _showCouponSection
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 300),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCouponCard(
+      dynamic coupon, CheckoutProvider cp, bool isLargeScreen) {
+    final code = coupon.code as String;
+    final name = coupon.name as String;
+    final isAlreadyApplied = cp.appliedCouponCode == code;
+
+    String discountLabel = name;
+    if (coupon.discountType == 'percentage') {
+      discountLabel = '${coupon.value}% OFF';
+    } else if (coupon.discountType == 'fixed') {
+      discountLabel = '₹${coupon.value} OFF';
+    }
+
+    String subtitleText = name;
+    if (coupon.minOrderAmount != null) {
+      subtitleText += ' • Min order ₹${coupon.minOrderAmount}';
+    }
+
+    final double orderTotal = _totalAmount;
+    final bool isEligible = coupon.minOrderAmount == null || orderTotal >= coupon.minOrderAmount!;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isAlreadyApplied 
+            ? Colors.green[50] 
+            : (isEligible ? Colors.grey[50] : Colors.red[50]?.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isAlreadyApplied 
+              ? Colors.green[300]! 
+              : (isEligible ? Colors.grey[200]! : Colors.red[100]!),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      code,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isAlreadyApplied 
+                            ? Colors.green[700] 
+                            : (isEligible ? Colors.black : Colors.grey[600]),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isEligible 
+                            ? _primaryColor.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        discountLabel,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: isEligible ? _primaryColor : Colors.grey[600],
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitleText,
+                  style: TextStyle(
+                    fontSize: 12, 
+                    color: isEligible ? Colors.grey[600] : Colors.red[700],
+                    fontWeight: isEligible ? FontWeight.normal : FontWeight.w500,
+                  ),
+                ),
+                if (!isEligible) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'This coupon is only available on ₹${coupon.minOrderAmount} or above amount',
+                    style: TextStyle(fontSize: 11, color: Colors.red[600], fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (isAlreadyApplied)
+            TextButton(
+              onPressed: cp.isCouponLoading ? null : _removeCoupon,
+              child: const Text('Remove',
+                  style: TextStyle(color: Colors.red, fontSize: 13)),
+            )
+          else
+            OutlinedButton(
+              onPressed: (!isEligible || cp.isCouponLoading)
+                  ? null
+                  : () => _applyListedCoupon(code),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: isEligible ? _primaryColor : Colors.grey[300]!,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('Apply',
+                  style: TextStyle(
+                      color: isEligible ? _primaryColor : Colors.grey[400],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13)),
+            ),
+        ],
       ),
     );
   }
@@ -628,34 +868,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         prefixText: label == 'Phone Number' ? '+91 ' : null,
         prefixStyle: label == 'Phone Number'
             ? const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        )
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              )
             : null,
       ),
       keyboardType: keyboardType,
       validator: isRequired
           ? (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter your $label';
-        }
-        if (label == 'Phone Number' && value.length != 10) {
-          return 'Phone number must be 10 digits';
-        }
-        if (label == 'Email' &&
-            !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                .hasMatch(value)) {
-          return 'Please enter a valid email address';
-        }
-        return null;
-      }
+              if (value == null || value.isEmpty) {
+                return 'Please enter your $label';
+              }
+              if (label == 'Phone Number' && value.length != 10) {
+                return 'Phone number must be 10 digits';
+              }
+              if (label == 'Email' &&
+                  !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(value)) {
+                return 'Please enter a valid email address';
+              }
+              return null;
+            }
           : null,
       inputFormatters: label == 'Phone Number'
           ? [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(10),
-      ]
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ]
           : null,
     );
   }
@@ -664,23 +904,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       BuildContext context, List<Widget> children, bool isLargeScreen) {
     return isLargeScreen
         ? Row(
-      children: children
-          .map((child) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: child,
-        ),
-      ))
-          .toList(),
-    )
+            children: children
+                .map((child) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: child,
+                      ),
+                    ))
+                .toList(),
+          )
         : Column(
-      children: children
-          .map((child) => Padding(
-        padding: const EdgeInsets.only(bottom: 12.0),
-        child: SizedBox(width: double.infinity, child: child),
-      ))
-          .toList(),
-    );
+            children: children
+                .map((child) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: SizedBox(width: double.infinity, child: child),
+                    ))
+                .toList(),
+          );
   }
 
   Widget _buildOrderItem(dynamic item, bool isLargeScreen) {
@@ -706,7 +946,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                item['image'] ?? 'https://via.placeholder.com/150',
+                item['image'] ?? '',
                 width: isLargeScreen ? 120 : 100,
                 height: isLargeScreen ? 120 : 100,
                 fit: BoxFit.cover,
@@ -762,7 +1002,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     '₹${item['price']}',
                     style: TextStyle(
                       fontSize: isLargeScreen ? 20 : 18,
-                      color: const Color.fromRGBO(111, 10, 15, 1),
+                      color: _primaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -773,43 +1013,5 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _placeOrder() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isProcessing = true;
-      });
-
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Order placed successfully! (Demo)'),
-            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
-          ),
-        );
-        setState(() {
-          _isProcessing = false;
-        });
-
-        // Show a success dialog (optional)
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Order Placed!'),
-            content: const Text('Your order has been placed successfully. (Demo Version)'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
   }
 }
