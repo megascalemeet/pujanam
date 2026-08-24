@@ -4,21 +4,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/payment/payment_api_service.dart';
 import '../models/payment/payment_models.dart';
 import '../models/orders/order_models.dart';
+import '../services/checkout/checkout_api_service.dart';
 
 class PaymentProvider with ChangeNotifier {
   final PaymentApiService _apiService = PaymentApiService();
+  final CheckoutApiService _checkoutApiService = CheckoutApiService();
 
   bool _isLoading = false;
   String? _errorMessage;
   PaymentOptionsResponse? _paymentOptions;
   OrderSummaryResponse? _orderSummary;
   Order? _orderDetails;
+  double? _shippingAmount;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   PaymentOptionsResponse? get paymentOptions => _paymentOptions;
   OrderSummaryResponse? get orderSummary => _orderSummary;
   Order? get orderDetails => _orderDetails;
+  double? get shippingAmount => _shippingAmount;
 
   // Simple UUID v4 generator
   String _generateUuidV4() {
@@ -54,6 +58,20 @@ class PaymentProvider with ChangeNotifier {
         return;
       }
       _paymentOptions = await _apiService.fetchPaymentOptions(sessionToken);
+      
+      try {
+        final shippingOptions = await _checkoutApiService.fetchShippingOptions(sessionToken);
+        if (shippingOptions.success && shippingOptions.applied != null) {
+          _shippingAmount = shippingOptions.applied!.price;
+        } else if (shippingOptions.success && shippingOptions.options.isNotEmpty) {
+          _shippingAmount = shippingOptions.options.first.price;
+        } else {
+          _shippingAmount = 0.0;
+        }
+      } catch (e) {
+        debugPrint('Failed to fetch shipping options: $e');
+        _shippingAmount = 0.0;
+      }
     } catch (_) {
       _errorMessage =
           'Unable to load payment methods. Please check your connection and try again.';

@@ -313,14 +313,15 @@ class _ProductCardState extends State<ProductCard>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E8),
+                                color:Colors.amber,
+                                //const Color(0xFFE8F5E8),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 '${((compareAtPrice - price) / compareAtPrice * 100).toStringAsFixed(0)}% OFF',
                                 style: TextStyle(
                                   fontSize: fontSize - 4,
-                                  color: const Color(0xFF2E7D32),
+                                  //color: const Color(0xFF2E7D32),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -347,26 +348,26 @@ class _ProductCardState extends State<ProductCard>
                 ),
               ],
             ),
-            if (hasDiscount)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${((compareAtPrice - price) / compareAtPrice * 100).toStringAsFixed(0)}% OFF',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
+            // if (hasDiscount)
+            //   Positioned(
+            //     top: 8,
+            //     left: 8,
+            //     child: Container(
+            //       padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            //       decoration: BoxDecoration(
+            //         color: AppColors.primary,
+            //         borderRadius: BorderRadius.circular(4),
+            //       ),
+            //       child: Text(
+            //         '${((compareAtPrice - price) / compareAtPrice * 100).toStringAsFixed(0)}% OFF',
+            //         style: const TextStyle(
+            //           color: Colors.white,
+            //           fontSize: 10,
+            //           fontWeight: FontWeight.bold,
+            //         ),
+            //       ),
+            //     ),
+            //   ),
             Positioned(
               top: 8,
               right: 8,

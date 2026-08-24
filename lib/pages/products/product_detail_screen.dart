@@ -571,29 +571,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
             ),
-          if (discount > 0)
-            Positioned(
-              left: 20,
-              top: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFA726),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${discount.toStringAsFixed(0)}% OFF',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+          // if (discount > 0)
+          //   Positioned(
+          //     left: 20,
+          //     top: 20,
+          //     child: Container(
+          //       padding: const EdgeInsets.symmetric(
+          //         horizontal: 12,
+          //         vertical: 6,
+          //       ),
+          //       decoration: BoxDecoration(
+          //         color: const Color(0xFFFFA726),
+          //         borderRadius: BorderRadius.circular(8),
+          //       ),
+          //       child: Text(
+          //         '${discount.toStringAsFixed(0)}% OFF',
+          //         style: const TextStyle(
+          //           color: Colors.white,
+          //           fontSize: 12,
+          //           fontWeight: FontWeight.bold,
+          //         ),
+          //       ),
+          //     ),
+          //   ),
           Positioned(
             right: 20,
             top: 20,
@@ -771,14 +771,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F5E8),
+                                  color: Colors.amber,
+                                  //const Color(0xFFE8F5E8),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: Text(
                                   '${((savings / mrpValue) * 100).toStringAsFixed(0)}% off',
                                   style: const TextStyle(
                                     fontSize: 9,
-                                    color: Color(0xFF2E7D32),
+                                  //  color: Color(0xFF2E7D32),
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -2617,14 +2618,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E8),
+                            color: Colors.amber,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             '${(((double.parse(_selectedMRP!) - double.parse(_selectedPrice!)) / double.parse(_selectedMRP!)) * 100).toStringAsFixed(0)}% OFF',
                             style: const TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF2E7D32),
+                              // color: Color(0xFF2E7D32),
                               fontWeight: FontWeight.bold,
                             ),
                           ),

@@ -48,12 +48,14 @@ class CustomerProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      _profile = await _apiService.updateProfile(
+      await _apiService.updateProfile(
         firstName: firstName,
         lastName: lastName,
         email: email,
         phoneNumber: phoneNumber,
       );
+      // Fetch the full updated profile to ensure local state is complete
+      _profile = await _apiService.getProfile();
       await _updateStoredContactDetails();
       return true;
     } catch (error) {
@@ -76,19 +78,19 @@ class CustomerProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      _profile = await _apiService.updateProfile(
+      await _apiService.updateProfile(
         firstName: firstName,
         lastName: lastName,
         email: email,
         phoneNumber: phoneNumber,
       );
-      await _updateStoredContactDetails();
+
       if (address != null) {
         final savedAddress = address.id.isEmpty
             ? await _apiService.addAddress(address)
             : await _apiService.updateAddress(address.id, address);
         final index = _addresses.indexWhere(
-          (item) => item.id == savedAddress.id,
+              (item) => item.id == savedAddress.id,
         );
         if (index == -1) {
           _addresses.add(savedAddress);
@@ -96,6 +98,11 @@ class CustomerProvider with ChangeNotifier {
           _addresses[index] = savedAddress;
         }
       }
+
+      // Fetch the full updated profile to ensure local state is complete
+      _profile = await _apiService.getProfile();
+      await _updateStoredContactDetails();
+
       return true;
     } catch (error) {
       _errorMessage = error.toString().replaceFirst('Exception: ', '');

@@ -589,14 +589,16 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E8),
+                                color: Colors.amber,
+                                //const Color(0xFFE8F5E8),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 '$discountPercent% OFF',
                                 style: TextStyle(
                                   fontSize: fontSize - 4,
-                                  color: const Color(0xFF2E7D32),
+                                  //color:
+                                  //const Color(0xFF2E7D32),
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Poppins',
                                 ),
@@ -625,29 +627,29 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                 ),
               ],
             ),
-            if (hasDiscount)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '$discountPercent% OFF',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
+            // if (hasDiscount)
+            //   Positioned(
+            //     top: 8,
+            //     left: 8,
+            //     child: Container(
+            //       padding: const EdgeInsets.symmetric(
+            //         horizontal: 6,
+            //         vertical: 2,
+            //       ),
+            //       decoration: BoxDecoration(
+            //         color: AppColors.primary,
+            //         borderRadius: BorderRadius.circular(4),
+            //       ),
+            //       child: Text(
+            //         '$discountPercent% OFF',
+            //         style: const TextStyle(
+            //           color: Colors.white,
+            //           fontSize: 10,
+            //           fontWeight: FontWeight.bold,
+            //         ),
+            //       ),
+            //     ),
+            //   ),
             Positioned(
               top: 8,
               right: 8,
