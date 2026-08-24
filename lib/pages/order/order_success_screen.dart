@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../main.dart';
 import '../../providers/payment_provider.dart';
+import '../../providers/cart/cart_provider.dart';
 
 class OrderSuccessScreen extends StatefulWidget {
   final String sessionToken;
@@ -21,6 +22,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<PaymentProvider>(context, listen: false).fetchOrderSummary();
+      Provider.of<CartProvider>(context, listen: false).clearCart();
     });
   }
 

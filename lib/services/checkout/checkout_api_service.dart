@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../core/constants/api_constants.dart';
 import '../../models/checkout/coupon_model.dart';
+import '../../models/checkout/shipping_models.dart';
 
 class CheckoutApiService {
   static final String _baseUrl = ApiConstants.checkoutBaseUrl;
@@ -21,6 +22,47 @@ class CheckoutApiService {
         throw Exception('Failed to load coupons (${response.statusCode})');
       }
     } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<ShippingOptionsResponse> fetchShippingOptions(String sessionToken) async {
+    final url = '$_baseUrl/checkout/session/$sessionToken/shipping-options';
+
+    try {
+      // Request logs
+      print('===== FETCH SHIPPING OPTIONS API =====');
+      print('URL: $url');
+      print('Method: GET');
+      print('Headers:');
+      print({
+        'Content-Type': 'application/json',
+        'x-api-key': _apiKey,
+      });
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': _apiKey,
+        },
+      );
+
+      // Response logs
+      print('Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      print('=====================================');
+
+      if (response.statusCode == 200) {
+        return ShippingOptionsResponse.fromJson(json.decode(response.body));
+      } else {
+        throw Exception(
+          'Failed to load shipping options (${response.statusCode})',
+        );
+      }
+    } catch (e, stackTrace) {
+      print('API Error: $e');
+      print('StackTrace: $stackTrace');
       rethrow;
     }
   }

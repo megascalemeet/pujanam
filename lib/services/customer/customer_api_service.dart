@@ -47,21 +47,23 @@ class CustomerApiService {
     };
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/shop/customer/me'),
+        Uri.parse('$_baseUrl/shop/customer/profile'),
         headers: await _headers(json: true),
         body: jsonEncode(changes),
       );
       debugPrint(
         'UPDATE PROFILE RESPONSE: ${response.statusCode} - ${response.body}',
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return CustomerProfile.fromJson(_decode(response));
+      } else {
+        final body = jsonDecode(response.body);
+        throw Exception(body['message'] ?? 'Update failed');
       }
     } catch (e) {
-      debugPrint('Update profile failed (ignoring): $e');
+      debugPrint('Update profile failed: $e');
+      rethrow;
     }
-    // Fallback: return current profile if update fails
-    return getProfile();
   }
 
   Future<List<CustomerAddress>> getAddresses() async {
@@ -91,9 +93,9 @@ class CustomerApiService {
   }
 
   Future<CustomerAddress> updateAddress(
-    String addressId,
-    CustomerAddress address,
-  ) async {
+      String addressId,
+      CustomerAddress address,
+      ) async {
     final response = await http.put(
       Uri.parse('$_baseUrl/shop/customer/addresses/$addressId'),
       headers: await _headers(json: true),

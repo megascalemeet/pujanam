@@ -166,69 +166,7 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
     } else {
       // Reset flag so user can retry if they choose the retry option
       _verificationTriggered = false;
-      _showPaymentFailedDialog();
     }
-  }
-
-  void _showPaymentFailedDialog() {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Payment Failed'),
-          ],
-        ),
-        content: const Text(
-            'Your transaction was unsuccessful or cancelled. What would you like to do?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              // Reload the payment gateway to let user retry
-              final redirectUrl =
-                  widget.initiateData.easebuzz?.redirectUrl ?? '';
-              _controller.loadRequest(Uri.parse(redirectUrl));
-            },
-            child: const Text(
-              'Retry Payment',
-              style: TextStyle(
-                  color: _primaryColor, fontWeight: FontWeight.bold),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx); // Close dialog
-              Navigator.pop(context); // Back to Payment Options
-            },
-            child: const Text(
-              'Choose Another Method',
-              style: TextStyle(color: _primaryColor),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx); // Close dialog
-              // Pop all the way back to checkout — pop Payment WebView + Payment Options
-              int count = 0;
-              Navigator.popUntil(context, (route) {
-                return count++ >= 2 || route.isFirst;
-              });
-            },
-            child: const Text(
-              'Back to Checkout',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -245,15 +183,16 @@ class _PaymentWebViewScreenState extends State<PaymentWebViewScreen> {
       },
       child: SafeArea(
         child: Scaffold(
-          // appBar: AppBar(
-          //   title: const Text(
-          //     'Complete Payment',
-          //     style:
-          //         TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          //   ),
-          //   backgroundColor: _primaryColor,
-          //   iconTheme: const IconThemeData(color: Colors.white),
-          // ),
+          appBar: AppBar(
+            title: const Text(
+              'Complete Payment',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: _primaryColor,
+            iconTheme: const IconThemeData(color: Colors.white),
+            centerTitle: true,
+          ),
           body: Stack(
             children: [
               WebViewWidget(controller: _controller),

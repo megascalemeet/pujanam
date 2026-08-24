@@ -1464,10 +1464,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       vertical: 2,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFE8F5E8,
-                                                  ),
-                                                  borderRadius:
+                                                  color: Colors.amber,
+                                                   borderRadius:
                                                       BorderRadius.circular(4),
                                                 ),
                                                 child: Text(
@@ -1475,9 +1473,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   style: TextStyle(
                                                     fontSize:
                                                         screenWidth * 0.035 - 4,
-                                                    color: const Color(
-                                                      0xFF2E7D32,
-                                                    ),
+                                                    //color:
+                                                    // const Color(
+                                                    //   0xFF2E7D32,
+                                                    // ),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -1509,29 +1508,29 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ],
                               ),
                               // % OFF Label - Top Left
-                              if (hasDiscount)
-                                Positioned(
-                                  top: 8,
-                                  left: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      '$discountPercent% OFF',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              // if (hasDiscount)
+                              //   Positioned(
+                              //     top: 8,
+                              //     left: 8,
+                              //     child: Container(
+                              //       padding: const EdgeInsets.symmetric(
+                              //         horizontal: 6,
+                              //         vertical: 2,
+                              //       ),
+                              //       decoration: BoxDecoration(
+                              //         color: AppColors.primary,
+                              //         borderRadius: BorderRadius.circular(4),
+                              //       ),
+                              //       child: Text(
+                              //         '$discountPercent% OFF',
+                              //         style: const TextStyle(
+                              //           color: Colors.white,
+                              //           fontSize: 10,
+                              //           fontWeight: FontWeight.bold,
+                              //         ),
+                              //       ),
+                              //     ),
+                              //   ),
                               Positioned(
                                 top: 8,
                                 right: 8,

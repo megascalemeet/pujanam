@@ -24,7 +24,7 @@ class CartApiService {
         'price': (item.price * 100).toInt(),
         'compareAtPrice': ((item.compareAtPrice > 0 ? item.compareAtPrice : item.price) * 100).toInt(),
         'quantity': item.quantity,
-        'weight': int.tryParse(item.weight.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+        'weight': _parseWeight(item.weight),
         'weightUnit': 'g',
       }).toList(),
     };
@@ -82,7 +82,7 @@ class CartApiService {
         'price': (item.price * 100).toInt(),
         'compareAtPrice': ((item.compareAtPrice > 0 ? item.compareAtPrice : item.price) * 100).toInt(),
         'quantity': item.quantity,
-        'weight': int.tryParse(item.weight.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+        'weight': _parseWeight(item.weight),
         'weightUnit': 'g',
       }).toList(),
     };
@@ -105,5 +105,10 @@ class CartApiService {
     debugPrint('====================================================');
 
     return CheckoutSessionResponse.fromJson(json.decode(response.body));
+  }
+
+  int _parseWeight(String weightStr) {
+    int weight = int.tryParse(weightStr.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1;
+    return weight > 0 ? weight : 1;
   }
 }

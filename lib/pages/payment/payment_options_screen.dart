@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/payment/payment_models.dart';
 import '../../providers/payment_provider.dart';
+import '../../providers/cart/cart_provider.dart';
+import '../../providers/orders/order_provider.dart';
+import '../order/order_success_screen.dart';
 import 'payment_webview_screen.dart';
 
 class PaymentOptionsScreen extends StatefulWidget {
@@ -34,15 +37,38 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
     if (!mounted) return;
 
     if (initiateResponse != null && initiateResponse.success) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentWebViewScreen(
-            sessionToken: widget.sessionToken,
-            initiateData: initiateResponse,
+      final bool requiresWebview = initiateResponse.easebuzz != null && 
+          (initiateResponse.easebuzz?.redirectUrl ?? '').isNotEmpty;
+
+      if (requiresWebview) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PaymentWebViewScreen(
+              sessionToken: widget.sessionToken,
+              initiateData: initiateResponse,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        // Direct success for COD or gateways without webview redirect
+        final cartProvider = Provider.of<CartProvider>(context, listen: false);
+        final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+        
+        await cartProvider.clearCart();
+        try {
+          await orderProvider.fetchOrders();
+        } catch (_) {}
+        
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OrderSuccessScreen(sessionToken: widget.sessionToken),
+          ),
+          (route) => route.isFirst,
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -172,6 +198,7 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
   Widget _buildPaymentContent(
       PaymentProvider provider, PaymentOptionsResponse options) {
     final summary = options.summary;
+    final cartSubtotal = Provider.of<CartProvider>(context, listen: false).subtotal;
     return Column(
       children: [
         Expanded(
@@ -187,6 +214,7 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
               ...options.methods.map((method) {
                 final isSelected = _selectedMethodId == method.id;
                 return Card(
+                  color: Colors.white,
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -240,18 +268,24 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                   children: [
                     _buildPriceRow(
                         'Subtotal',
-                        '₹${summary.subtotal.toStringAsFixed(2)}'),
+                        '₹${cartSubtotal.toStringAsFixed(2)}'),
                     const SizedBox(height: 8),
                     _buildPriceRow(
                         'Discount',
                         '-₹${summary.discount.toStringAsFixed(2)}',
                         valueColor: Colors.green),
                     const SizedBox(height: 8),
+                    if (provider.shippingAmount != null && provider.shippingAmount! > 0) ...[
+                      _buildPriceRow(
+                          'Shipping',
+                          '₹${provider.shippingAmount!.toStringAsFixed(2)}'),
+                      const SizedBox(height: 8),
+                    ],
                     const Divider(),
                     const SizedBox(height: 8),
                     _buildPriceRow(
                       'Grand Total',
-                      '₹${summary.total.toStringAsFixed(2)}',
+                      '₹${(cartSubtotal - summary.discount + (provider.shippingAmount ?? 0)).toStringAsFixed(2)}',
                       isBold: true,
                       fontSize: 18,
                     ),

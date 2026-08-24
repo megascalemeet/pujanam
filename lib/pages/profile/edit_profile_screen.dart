@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pujanam/theme/app_color.dart';
 
 import '../../models/customer/customer_address.dart';
 import '../../providers/customer/customer_provider.dart';
@@ -33,7 +34,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final profile = customer.profile;
     _currentAddress =
         customer.addresses.where((address) => address.isDefault).firstOrNull ??
-        (customer.addresses.isEmpty ? null : customer.addresses.first);
+            (customer.addresses.isEmpty ? null : customer.addresses.first);
     _firstName.text = profile?.firstName ?? '';
     _lastName.text = profile?.lastName ?? '';
     _email.text = profile?.email ?? '-';
@@ -72,39 +73,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final customer = context.read<CustomerProvider>();
     final address = _hasAddressInput
         ? CustomerAddress(
-            id: _currentAddress?.id ?? '',
-            firstName: _firstName.text.trim(),
-            lastName: _lastName.text.trim(),
-            addressLine1: _addressLine1.text.trim(),
-            addressLine2: _addressLine2.text.trim().isEmpty
-                ? null
-                : _addressLine2.text.trim(),
-            addressType: _currentAddress?.addressType ?? 'shipping',
-            city: _city.text.trim(),
-            state: _state.text.trim(),
-            postalCode: _postalCode.text.trim(),
-            countryCode: _currentAddress?.countryCode ?? 'IN',
-            phoneNumber: _phone.text.trim(),
-            isDefault: _currentAddress?.isDefault ?? true,
-            createdAt: _currentAddress?.createdAt ?? DateTime.now(),
-            updatedAt: DateTime.now(),
-          )
+      id: _currentAddress?.id ?? '',
+      firstName: _firstName.text.trim(),
+      lastName: _lastName.text.trim(),
+      addressLine1: _addressLine1.text.trim(),
+      addressLine2: _addressLine2.text.trim().isEmpty
+          ? null
+          : _addressLine2.text.trim(),
+      addressType: _currentAddress?.addressType ?? 'shipping',
+      city: _city.text.trim(),
+      state: _state.text.trim(),
+      postalCode: _postalCode.text.trim(),
+      countryCode: _currentAddress?.countryCode ?? 'IN',
+      phoneNumber: _phone.text.trim(),
+      isDefault: _currentAddress?.isDefault ?? true,
+      createdAt: _currentAddress?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    )
         : null;
+    final currentEmail = customer.profile?.email?.trim().toLowerCase();
+    final inputEmail = (_email.text.trim().isEmpty || _email.text.trim() == '-')
+        ? null
+        : _email.text.trim().toLowerCase();
+
+    // Only send the email if it has actually changed and is not null
+    final emailToUpdate = (inputEmail != null && inputEmail != currentEmail)
+        ? inputEmail
+        : null;
+
     final success = await customer.saveProfileAndAddress(
       firstName: _firstName.text.trim(),
       lastName: _lastName.text.trim(),
-      email: (_email.text.trim().isEmpty || _email.text.trim() == '-')
-          ? null
-          : _email.text.trim(),
+      email: emailToUpdate,
       phoneNumber: _phone.text.trim(),
       address: address,
     );
     if (!mounted) return;
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Profile updated successfully.'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.primary,
         ),
       );
       Navigator.pop(context, true);
@@ -165,6 +174,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 'Phone',
                 keyboardType: TextInputType.phone,
                 phone: true,
+                readOnly: true,
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 8, bottom: 12),
@@ -216,13 +226,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                    'Save Changes',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -233,14 +243,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _field(
-    TextEditingController controller,
-    String label, {
-    bool readOnly = false,
-    bool required = false,
-    bool pincode = false,
-    bool phone = false,
-    TextInputType? keyboardType,
-  }) => Padding(
+      TextEditingController controller,
+      String label, {
+        bool readOnly = false,
+        bool required = false,
+        bool pincode = false,
+        bool phone = false,
+        TextInputType? keyboardType,
+      }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
     child: TextFormField(
       controller: controller,

@@ -10,6 +10,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../main.dart';
 import '../../models/orders/order_models.dart';
 import '../../providers/orders/order_provider.dart';
+import '../../providers/product/product_provider.dart';
+import '../../models/product/add_review_model.dart';
+import '../../services/product/product_api_service.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -56,7 +59,9 @@ class _OrdersScreenState extends State<OrdersScreen>
     try {
       if (dateStr.isEmpty) return 'N/A';
       DateTime date = DateTime.parse(dateStr);
-      return DateFormat('dd MMM yyyy, hh:mm a').format(date);
+      // Convert to UTC then add 5 hours and 30 minutes for IST
+      DateTime istDate = date.toUtc().add(const Duration(hours: 5, minutes: 30));
+      return DateFormat('dd MMM yyyy, hh:mm a').format(istDate);
     } catch (e) {
       return dateStr;
     }
@@ -68,6 +73,7 @@ class _OrdersScreenState extends State<OrdersScreen>
       case 'completed':
       case 'confirmed':
       case 'success':
+      case 'delivered':
         return Colors.green[700]!;
       case 'pending':
       case 'processing':
@@ -107,29 +113,22 @@ class _OrdersScreenState extends State<OrdersScreen>
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      String name = prefs.getString('name') ?? '';
-      if (name.isEmpty) {
-        final firstName = prefs.getString('firstName') ?? '';
-        final lastName = prefs.getString('lastName') ?? '';
-        name = '$firstName $lastName'.trim();
-      }
-      final email = prefs.getString('email') ?? '';
-
-      final requestBody = json.encode({
-        'product_id': productId,
-        'rating': rating,
-        'description': description,
-        'name': name,
-        'email': email,
-      });
-
-      final response = await http.post(
-        Uri.parse('https://new-test.megascale.co.in/api/p1/addreview'),
-        headers: {'Content-Type': 'application/json'},
-        body: requestBody,
+      final String customerId = prefs.getString('customer_id') ?? '';
+      
+      final int prodIdInt = int.tryParse(productId) ?? 0;
+      
+      final reviewModel = AddReviewModel(
+        productId: prodIdInt,
+        customerId: customerId,
+        rating: rating,
+        description: description,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (!ctx.mounted) return;
+      final productProvider = Provider.of<ProductProvider>(ctx, listen: false);
+      final bool success = await productProvider.submitReview(reviewModel);
+
+      if (success) {
         if (ctx.mounted) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -233,15 +232,15 @@ class _OrdersScreenState extends State<OrdersScreen>
                                     size: isSmallScreen ? 18 : 20,
                                   );
                                 }),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${avgRating.toStringAsFixed(1)} ($reviewCount ${reviewCount == 1 ? 'review' : 'reviews'})',
-                                  style: TextStyle(
-                                    fontSize: isSmallScreen ? 11 : 12,
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                                // const SizedBox(width: 6),
+                                // Text(
+                                //   '${avgRating.toStringAsFixed(1)} ($reviewCount)',
+                                //   style: TextStyle(
+                                //     fontSize: isSmallScreen ? 11 : 12,
+                                //     color: Colors.grey[600],
+                                //     fontWeight: FontWeight.w500,
+                                //   ),
+                                // ),
                               ],
                             ),
                           if (reviewCount == 0) ...[ 
@@ -303,17 +302,22 @@ class _OrdersScreenState extends State<OrdersScreen>
 
   Future<Map<String, dynamic>> _fetchReviewStats(String productId) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://new-test.megascale.co.in/api/p1/reviewstats?product_id=$productId'),
-        headers: {'Content-Type': 'application/json'},
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'average_rating': (data['average_rating'] ?? 0).toDouble(),
-          'review_count': data['review_count'] ?? 0,
-        };
+      final summary = await ProductApiService().fetchProductReviewSummary(productId);
+      
+      double avg = 0.0;
+      if (summary['avg_rating'] != null) {
+        avg = double.tryParse(summary['avg_rating'].toString()) ?? 0.0;
       }
+      
+      int count = 0;
+      if (summary['total_reviews'] != null) {
+        count = int.tryParse(summary['total_reviews'].toString()) ?? 0;
+      }
+
+      return {
+        'average_rating': avg,
+        'review_count': count,
+      };
     } catch (e) {
       debugPrint('[ReviewStats] Error: $e');
     }
@@ -569,7 +573,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                                     children: [
                                       Flexible(
                                         child: Text(
-                                          'Order #${order.orderNumber}',
+                                          'Order ${order.orderNumber}',
                                           style: TextStyle(
                                             fontSize: isSmallScreen ? 14 : 16,
                                             fontWeight: FontWeight.bold,
@@ -641,291 +645,337 @@ class _OrdersScreenState extends State<OrdersScreen>
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: isSmallScreen ? 16 : 20),
                             Text(
-                              'Items Ordered',
+                              'Items',
                               style: TextStyle(
                                 fontSize: isSmallScreen ? 16 : 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: order.items.length,
-                              itemBuilder: (context, index) {
-                                final item = order.items[index];
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 50,
-                                        height: 50,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[100],
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                                            ? ClipRRect(
-                                                borderRadius: BorderRadius.circular(8),
-                                                child: Image.network(
-                                                  item.imageUrl!,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              )
-                                            : Icon(
-                                                Icons.shopping_bag_outlined,
-                                                color: Colors.grey[400],
-                                              ),
+                            SizedBox(height: isSmallScreen ? 8 : 12),
+                            // Items List
+                            ...order.items.map((item) => Container(
+                                      margin: EdgeInsets.only(
+                                          bottom: isSmallScreen ? 8 : 12),
+                                      padding:
+                                          EdgeInsets.all(isSmallScreen ? 8 : 12),
+                                      decoration: BoxDecoration(
+                                        border:
+                                            Border.all(color: Colors.grey[200]!),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            width: isSmallScreen ? 50 : 60,
+                                            height: isSmallScreen ? 50 : 60,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[100],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                                                ? ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                    child: Image.network(
+                                                      item.imageUrl!,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (context, error,
+                                                              stackTrace) =>
+                                                          Icon(
+                                                        Icons
+                                                            .image_not_supported_outlined,
+                                                        color: Colors.grey[400],
+                                                        size:
+                                                            isSmallScreen ? 20 : 24,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    Icons.shopping_bag_outlined,
+                                                    color: Colors.grey[400],
+                                                    size: isSmallScreen ? 20 : 24,
+                                                  ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  item.title,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize:
+                                                        isSmallScreen ? 13 : 14,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      'Qty: ${item.quantity}',
+                                                      style: TextStyle(
+                                                        color: Colors.grey[600],
+                                                        fontSize:
+                                                            isSmallScreen ? 12 : 13,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '₹${item.price}',
+                                                      style: TextStyle(
+                                                        fontWeight: FontWeight.w500,
+                                                        fontSize:
+                                                            isSmallScreen ? 13 : 14,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                            SizedBox(height: isSmallScreen ? 16 : 20),
+                            Text(
+                              'Price Details',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: isSmallScreen ? 8 : 12),
+                            Container(
+                              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[200]!),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  _detailRow(
+                                      'Subtotal',
+                                      '₹${order.totalPrice}',
+                                      isSmallScreen: isSmallScreen),
+                                  _detailRow('Tax', '₹0.00',
+                                      isSmallScreen: isSmallScreen),
+                                  _detailRow('Shipping', 'Free',
+                                      isSmallScreen: isSmallScreen),
+                                  const Divider(height: 20, thickness: 1),
+                                  _detailRow(
+                                      'Total',
+                                      '₹${order.totalPrice}',
+                                      isTotal: true,
+                                      isSmallScreen: isSmallScreen),
+                                ],
+                              ),
+                            ),
+                            Builder(
+                              builder: (context) {
+                                final bool isFulfilled = order.status.toLowerCase() == 'delivered' || order.status.toLowerCase() == 'completed' || order.status.toLowerCase() == 'paid';
+                                
+                                bool hasTracking = false;
+                                if (order.latestShipment != null && order.latestShipment!.trackingNumber.isNotEmpty) {
+                                  hasTracking = true;
+                                }
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (!isFulfilled && !hasTracking) ...[
+                                      SizedBox(height: isSmallScreen ? 16 : 20),
+                                      Container(
+                                        padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.shade50,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.orange.shade200),
+                                        ),
+                                        child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              item.title,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: isSmallScreen ? 14 : 15,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Qty: ${item.quantity}',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: isSmallScreen ? 12 : 14,
+                                            Icon(Icons.info_outline_rounded, color: Colors.orange[800], size: 24),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                order.status.toLowerCase() == 'pending' || order.status.toLowerCase() == 'processing'
+                                                    ? "Your order is being prepared. Tracking details will be available once it is shipped. Please check again after 2 days."
+                                                    : "Tracking information isn't available yet. Please check again after 2 days once your order has been shipped.",
+                                                style: TextStyle(
+                                                  color: Colors.orange[900],
+                                                  fontSize: isSmallScreen ? 13 : 14,
+                                                  height: 1.4,
+                                                ),
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      Text(
-                                        '${order.currency} ${item.price}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: isSmallScreen ? 14 : 15,
-                                        ),
-                                      ),
                                     ],
-                                  ),
-                                );
-                              },
-                            ),
-                            if (order.shippingAddress != null) ...[
-                              const SizedBox(height: 20),
-                              Container(
-                                padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(Icons.calendar_today,
-                                            size: isSmallScreen ? 14 : 16,
-                                            color: primaryColor),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Ordered on: ',
-                                          style: TextStyle(
-                                            fontSize: isSmallScreen ? 12 : 13,
-                                            color: Colors.grey[700],
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            _formatDate(order.createdAt),
-                                            style: TextStyle(
-                                              fontSize: isSmallScreen ? 12 : 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
+                                    SizedBox(height: isSmallScreen ? 16 : 20),
+                                    Text(
+                                      'Shipping Information',
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 16 : 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(Icons.location_on_outlined,
-                                            size: isSmallScreen ? 14 : 16,
-                                            color: primaryColor),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Shipping to: ',
-                                          style: TextStyle(
-                                            fontSize: isSmallScreen ? 12 : 13,
-                                            color: Colors.grey[700],
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            [
-                                              order.shippingAddress!.addressLine1.trim(),
-                                              order.shippingAddress!.addressLine2.trim(),
-                                              order.shippingAddress!.city.trim(),
-                                              order.shippingAddress!.state.trim(),
-                                              order.shippingAddress!.pincode.trim(),
-                                              order.shippingAddress!.country.trim(),
-                                            ].where((s) => s.isNotEmpty).join(', '),
-                                            style: TextStyle(
-                                              fontSize: isSmallScreen ? 12 : 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            const Divider(height: 30),
-                            _detailRow('Subtotal', '${order.currency} ${order.totalPrice}', isSmallScreen: isSmallScreen),
-                            _detailRow('Shipping', 'Free', isSmallScreen: isSmallScreen),
-                            _detailRow('Total', '${order.currency} ${order.totalPrice}', isTotal: true, isSmallScreen: isSmallScreen),
-                            const SizedBox(height: 25),
-                            if (order.latestShipment != null) ...[
-                              Text(
-                                'Tracking Information',
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 16 : 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: isSmallScreen ? 8 : 12),
-                              Container(
-                                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey[200]!),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (order.latestShipment!.carrier != null) ...[
-                                      Row(
+                                    SizedBox(height: isSmallScreen ? 8 : 12),
+                                    Container(
+                                      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.grey[200]!),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(Icons.local_shipping_outlined,
-                                              size: isSmallScreen ? 14 : 16,
-                                              color: Colors.grey[600]),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Carrier: ',
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: isSmallScreen ? 12 : 14,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              order.latestShipment!.carrier ?? 'N/A',
+                                          if (order.shippingAddress != null) ...[
+                                            Text(
+                                              [
+                                                order.shippingAddress!.addressLine1.trim(),
+                                                order.shippingAddress!.addressLine2.trim(),
+                                                order.shippingAddress!.city.trim(),
+                                                order.shippingAddress!.state.trim(),
+                                                order.shippingAddress!.pincode.trim(),
+                                                order.shippingAddress!.country.trim(),
+                                              ].where((s) => s.isNotEmpty).join(', '),
                                               style: TextStyle(
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: isSmallScreen ? 12 : 14,
+                                                fontSize: isSmallScreen ? 13 : 14,
                                               ),
-                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
+                                          ],
+                                          if (order.latestShipment != null && order.latestShipment!.carrier != null && order.latestShipment!.carrier!.isNotEmpty) ...[
+                                            const SizedBox(height: 12),
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(Icons.local_shipping_outlined,
+                                                    size: isSmallScreen ? 14 : 16,
+                                                    color: Colors.grey[600]),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Carrier: ',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: isSmallScreen ? 12 : 14,
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    order.latestShipment!.carrier!,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w500,
+                                                      fontSize: isSmallScreen ? 12 : 14,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          if (order.latestShipment != null && order.latestShipment!.trackingNumber.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.numbers_outlined,
+                                                    size: isSmallScreen ? 14 : 16,
+                                                    color: Colors.grey[600]),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Tracking #: ',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: isSmallScreen ? 12 : 14,
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    order.latestShipment!.trackingNumber,
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.w500,
+                                                      fontSize: isSmallScreen ? 12 : 14,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  icon: Icon(Icons.content_copy,
+                                                      size: isSmallScreen ? 16 : 18),
+                                                  onPressed: () {
+                                                    if (order.latestShipment!.trackingNumber.isNotEmpty) {
+                                                      Clipboard.setData(ClipboardData(text: order.latestShipment!.trackingNumber));
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(content: Text('Tracking number copied to clipboard!')),
+                                                      );
+                                                    }
+                                                  },
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ],
                                       ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.numbers_outlined,
-                                            size: isSmallScreen ? 14 : 16,
-                                            color: Colors.grey[600]),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Tracking #: ',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                            fontSize: isSmallScreen ? 12 : 14,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            order.latestShipment!.trackingNumber,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: isSmallScreen ? 12 : 14,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: Icon(Icons.content_copy,
-                                              size: isSmallScreen ? 16 : 18),
-                                          onPressed: () {
-                                            if (order.latestShipment!.trackingNumber.isNotEmpty) {
-                                              Clipboard.setData(ClipboardData(text: order.latestShipment!.trackingNumber));
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Tracking number copied to clipboard!')),
-                                              );
+                                    ),
+                                    if (!isFulfilled && hasTracking) ...[
+                                      const SizedBox(height: 30),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          if (order.latestShipment?.trackingUrl != null && order.latestShipment!.trackingUrl!.isNotEmpty) {
+                                            final url = Uri.parse(order.latestShipment!.trackingUrl!);
+                                            if (await canLaunchUrl(url)) {
+                                              await launchUrl(url);
+                                            } else {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Could not open tracking link.')),
+                                                );
+                                              }
                                             }
-                                          },
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
+                                          } else {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Tracking details will be updated soon.'),
+                                                behavior: SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: primaryColor,
+                                          foregroundColor: Colors.white,
+                                          minimumSize: const Size(double.infinity, 50),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          elevation: 0,
                                         ),
-                                      ],
-                                    ),
+                                        child: const Text(
+                                          'Track Order',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 20),
                                   ],
-                                ),
-                              ),
-                              const SizedBox(height: 30),
-                            ],
-                            ElevatedButton(
-                              onPressed: () async {
-                                if (order.latestShipment?.trackingUrl != null && order.latestShipment!.trackingUrl!.isNotEmpty) {
-                                  final url = Uri.parse(order.latestShipment!.trackingUrl!);
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url);
-                                  } else {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Could not open tracking link.')),
-                                      );
-                                    }
-                                  }
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Tracking details will be updated soon.'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
+                                );
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                'Track Order',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                             ),
                           ],
                         ),
@@ -981,7 +1031,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     final double fontSize = isSmallScreen ? 13 : 14;
     final double padding = isSmallScreen ? 12 : 16;
 
-    final bool isFulfilled = order.status.toLowerCase() == 'delivered' || order.status.toLowerCase() == 'completed';
+    final bool isFulfilled = order.status.toLowerCase() == 'delivered' || order.status.toLowerCase() == 'completed' || order.status.toLowerCase() == 'paid';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1022,7 +1072,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             child: Text(
-                              'Order #${order.orderNumber}',
+                              'Order ${order.orderNumber}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: fontSize,
@@ -1113,22 +1163,21 @@ class _OrdersScreenState extends State<OrdersScreen>
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${order.items.length} items',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: isSmallScreen ? 11 : 12,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '${order.currency} ${order.totalPrice}',
-                                    style: TextStyle(
-                                      color: primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: isSmallScreen ? 15 : 16,
-                                    ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.production_quantity_limits,
+                                          size: isSmallScreen ? 14 : 16,
+                                          color: Colors.grey[600]),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Quantity: ${firstItem.quantity}',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: isSmallScreen ? 12 : 13,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -1136,28 +1185,155 @@ class _OrdersScreenState extends State<OrdersScreen>
                           ],
                         );
                       }),
+                      const SizedBox(height: 16),
                     ],
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _formatDate(order.createdAt),
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: isSmallScreen ? 11 : 12,
+                    Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: isSmallScreen ? 14 : 16,
+                              color: primaryColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Ordered on: ',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 12 : 13,
+                              color: Colors.grey[700],
+                            ),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: Text(
+                              _formatDate(order.createdAt),
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 12 : 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const Divider(height: 24),
+                    LayoutBuilder(builder: (context, constraints) {
+                      if (constraints.maxWidth < 280) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Amount',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '₹${order.totalPrice}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _showOrderDetails(order),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                ),
+                                child: const Text(
+                                  'View Details',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Amount',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '₹${order.totalPrice}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isSmallScreen ? 16 : 18,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _showOrderDetails(order),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: isSmallScreen ? 12 : 16,
+                                    vertical: isSmallScreen ? 8 : 10),
+                              ),
+                              child: Text(
+                                'View Details',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isSmallScreen ? 13 : 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    }),
                   ],
                 ),
               ),
             ),
           ),
         ),
-        if (isFulfilled)
+        if (isFulfilled) ...[
           _buildReviewQuickRow(order, isSmallScreen: isSmallScreen),
+          const SizedBox(height: 12),
+        ],
       ],
     );
   }
