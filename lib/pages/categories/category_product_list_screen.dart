@@ -15,7 +15,9 @@ import '../../providers/category/category_provider.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/advanced_filter_widget.dart';
 import '../auth/login.dart';
+import '../../providers/cart/cart_provider.dart';
 import '../cart/cart_screen.dart';
+import '../../providers/wishlist/wishlist_provider.dart';
 
 class CategoryProductListScreen extends StatefulWidget {
   final String title;
@@ -37,7 +39,6 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   final TextEditingController _searchController = TextEditingController();
   Map<String, bool> _wishlistStatus = {};
   Map<String, bool> _isAddingToWishlist = {};
-  int _cartCount = 0; // Placeholder
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -115,111 +116,94 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
     return id.split('/').last;
   }
 
-  Future<void> _toggleWishlist(BuildContext context, String productId) async {
+  int? _extractVariantId(dynamic product) {
+    if (product == null) return null;
+    try {
+      if (product is Map) {
+        final variants = product['variants'];
+        if (variants is List && variants.isNotEmpty) {
+          final firstVariant = variants[0];
+          if (firstVariant is Map) {
+            return int.tryParse(firstVariant['id']?.toString() ?? '');
+          } else {
+            try {
+              return int.tryParse((firstVariant as dynamic).id?.toString() ?? '');
+            } catch (_) {}
+          }
+        }
+      } else {
+        try {
+          final variants = (product as dynamic).variants;
+          if (variants is List && variants.isNotEmpty) {
+             final firstVariant = variants[0];
+             if (firstVariant is Map) {
+               return int.tryParse(firstVariant['id']?.toString() ?? '');
+             } else {
+               return int.tryParse((firstVariant as dynamic).id?.toString() ?? '');
+             }
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
+
+  Future<void> _toggleWishlist(BuildContext context, String productId, dynamic product) async {
     if (_isAddingToWishlist[productId] ?? false) return;
     final normalizedId = _getProductId(productId);
+    final variantId = _extractVariantId(product);
 
     setState(() {
-      _wishlistStatus[productId] = !(_wishlistStatus[productId] ?? false);
       _isAddingToWishlist[productId] = true;
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('customer_id');
-      if (customerId == null) {
-        setState(() {
-          _wishlistStatus[productId] = false;
-          _isAddingToWishlist[productId] = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please login to manage wishlist'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 1),
-          ),
-        );
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        });
-        return;
-      }
+      final wishlistProvider = Provider.of<WishlistProvider>(context, listen: false);
+      final wasWishlisted = wishlistProvider.isProductWishlisted(normalizedId);
+      
+      final success = await wishlistProvider.toggleWishlist(normalizedId, variantId: variantId);
 
-      http.Response response;
-      if (_wishlistStatus[productId] ?? false) {
-        response = await http
-            .post(
-              Uri.parse(
-                'https://new-test.megascale.co.in/api/p1/addtowishlist',
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                wasWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
               ),
-              headers: {
-                'Content-Type': 'application/json',
-                'Connection': 'Keep-Alive',
-              },
-              body: json.encode({
-                'customer_id': customerId,
-                'product_id': normalizedId,
-              }),
-            )
-            .timeout(const Duration(seconds: 30));
-      } else {
-        response = await http
-            .delete(
-              Uri.parse(
-                'https://new-test.megascale.co.in/api/p1/removewishlist',
-              ),
-              headers: {
-                'Content-Type': 'application/json',
-                'Connection': 'Keep-Alive',
-              },
-              body: json.encode({
-                'customer_id': customerId,
-                'product_id': normalizedId,
-              }),
-            )
-            .timeout(const Duration(seconds: 30));
-      }
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _wishlistStatus[productId]!
-                  ? 'Added to wishlist'
-                  : 'Removed from wishlist',
+              backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+              duration: const Duration(seconds: 1),
             ),
-            backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
-            duration: const Duration(seconds: 1),
-          ),
-        );
+          );
+        }
       } else {
-        setState(
-          () => _wishlistStatus[productId] = !(_wishlistStatus[productId]!),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update wishlist'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 1),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(wishlistProvider.errorMessage ?? 'Failed to update wishlist'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
-      setState(
-        () => _wishlistStatus[productId] = !(_wishlistStatus[productId]!),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error updating wishlist'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 1),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error updating wishlist'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
     } finally {
-      setState(() => _isAddingToWishlist[productId] = false);
+      if (mounted) {
+        setState(() {
+          _isAddingToWishlist[productId] = false;
+        });
+      }
     }
   }
 
@@ -298,40 +282,45 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.shopping_cart_outlined, color: Colors.white),
-                if (_cartCount > 0)
-                  Positioned(
-                    right: -8,
-                    top: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _cartCount.toString(),
-                        style: const TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, child) {
+              final count = cartProvider.items.length;
+              return IconButton(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                    if (count > 0)
+                      Positioned(
+                        right: -8,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            count.toString(),
+                            style: const TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CartScreen()),
-            ),
+                  ],
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CartScreen()),
+                ),
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -663,7 +652,7 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
               top: 8,
               right: 8,
               child: GestureDetector(
-                onTap: () => _toggleWishlist(context, id),
+                onTap: () => _toggleWishlist(context, id, originalProduct),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   padding: const EdgeInsets.all(6),
@@ -689,10 +678,10 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                           ),
                         )
                       : Icon(
-                          _wishlistStatus[id] == true
+                          context.watch<WishlistProvider>().isProductWishlisted(_getProductId(id))
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: _wishlistStatus[id] == true
+                          color: context.watch<WishlistProvider>().isProductWishlisted(_getProductId(id))
                               ? brandColor
                               : Colors.grey[600],
                           size: 16,

@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../models/cart/cart_models.dart';
 import '../../models/category/category_product_response_model.dart';
 import '../../models/product/add_review_model.dart';
@@ -15,6 +11,7 @@ import '../../models/product/product_detail_response_model.dart';
 import '../../models/product/product_response_model.dart';
 import '../../providers/cart/cart_provider.dart';
 import '../../providers/product/product_provider.dart';
+import '../../providers/wishlist/wishlist_provider.dart';
 import '../../services/notification_services.dart';
 import '../../services/product/product_api_service.dart';
 import '../../widgets/recent_purchase_notification.dart';
@@ -33,12 +30,10 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isAddingToCart = false;
-  bool _isInWishlist = false;
   bool _isAddingToWishlist = false;
   String? _selectedWeight;
   String? _selectedPrice;
   String? _selectedMRP;
-  int _cartCount = 0;
   bool _isLoading = true;
   int _currentReviewPage = 0;
   PageController? _imagePageController;
@@ -111,7 +106,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _currentReviewPage = 0;
 
     checkWishlistStatus();
-    _loadCartCount();
     _loadAllDetails();
   }
 
@@ -150,129 +144,80 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  Future<void> _loadCartCount() async {
+  Future<void> checkWishlistStatus() async {
     try {
-      if (mounted) {
-        setState(() {
-          _cartCount = Provider.of<CartProvider>(
-            context,
-            listen: false,
-          ).items.length;
-        });
-      }
+      Provider.of<WishlistProvider>(context, listen: false).fetchWishlist();
     } catch (e) {
-      debugPrint('Error loading cart count: $e');
+      debugPrint('Error syncing wishlist: $e');
     }
   }
 
-  Future<void> checkWishlistStatus() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('customer_id');
-      if (customerId == null) return;
-
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://new-test.megascale.co.in/api/p1/wishlist?customer_id=$customerId',
-            ),
-            headers: {'Content-Type': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> wishlistData = json.decode(response.body);
-        final List<dynamic> wishlistItems = wishlistData['wishlist'] ?? [];
-        final pId = productId;
-
-        final bool isInList = wishlistItems.any(
-          (item) =>
-              item is Map<String, dynamic> &&
-              item['product_id']?.toString() == pId,
-        );
-
-        if (mounted) {
-          setState(() {
-            _isInWishlist = isInList;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking wishlist: $e');
+  int? _getSelectedVariantId() {
+    if (_productDetails != null && _productDetails!.variants.isNotEmpty) {
+      final variants = _productDetails!.variants;
+      final selectedVariant = variants.firstWhere(
+        (v) => v.title == _selectedWeight,
+        orElse: () => variants.first,
+      );
+      final idStr = selectedVariant.id.toString().split('/').last;
+      return int.tryParse(idStr);
     }
+    return null;
   }
 
   Future<void> toggleWishlist(BuildContext context) async {
     if (_isAddingToWishlist) return;
 
     setState(() {
-      _isInWishlist = !_isInWishlist;
       _isAddingToWishlist = true;
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('customer_id');
       final pId = productId;
+      final wishlistProvider = Provider.of<WishlistProvider>(context, listen: false);
+      final wasWishlisted = wishlistProvider.isProductWishlisted(pId);
+      final vId = _getSelectedVariantId();
+      
+      final success = await wishlistProvider.toggleWishlist(pId, variantId: vId);
 
-      if (customerId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please login to manage wishlist')),
-        );
-        setState(() {
-          _isInWishlist = !_isInWishlist;
-          _isAddingToWishlist = false;
-        });
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        });
-        return;
-      }
-
-      http.Response response;
-      if (_isInWishlist) {
-        response = await http
-            .post(
-              Uri.parse(
-                'https://new-test.megascale.co.in/api/p1/addtowishlist',
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                wasWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
               ),
-              headers: {'Content-Type': 'application/json'},
-              body: json.encode({'customer_id': customerId, 'product_id': pId}),
-            )
-            .timeout(const Duration(seconds: 30));
-      } else {
-        response = await http
-            .delete(
-              Uri.parse(
-                'https://new-test.megascale.co.in/api/p1/removewishlist',
-              ),
-              headers: {'Content-Type': 'application/json'},
-              body: json.encode({'customer_id': customerId, 'product_id': pId}),
-            )
-            .timeout(const Duration(seconds: 30));
-      }
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isInWishlist ? 'Added to wishlist' : 'Removed from wishlist',
+              backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+              duration: const Duration(seconds: 1),
             ),
-            backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
-            duration: const Duration(seconds: 1),
-          ),
-        );
+          );
+        }
       } else {
-        setState(() => _isInWishlist = !_isInWishlist);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(wishlistProvider.errorMessage ?? 'Failed to update wishlist'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
-      setState(() => _isInWishlist = !_isInWishlist);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error updating wishlist'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
-        setState(() => _isAddingToWishlist = false);
+        setState(() {
+          _isAddingToWishlist = false;
+        });
       }
     }
   }
@@ -373,46 +318,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         overflow: TextOverflow.ellipsis,
       ),
       actions: [
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.shopping_cart_outlined,
-                color: Colors.black,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CartScreen()),
-                );
-              },
-            ),
-            if (_cartCount > 0)
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Color.fromRGBO(111, 10, 15, 1),
-                    shape: BoxShape.circle,
+        Consumer<CartProvider>(
+          builder: (context, cartProvider, child) {
+            final count = cartProvider.items.length;
+            return Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Colors.black,
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    '$_cartCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CartScreen()),
+                    );
+                  },
                 ),
-              ),
-          ],
+                if (count > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Color.fromRGBO(111, 10, 15, 1),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -672,10 +622,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           )
                         : Icon(
-                            _isInWishlist
+                            context.watch<WishlistProvider>().isProductWishlisted(productId)
                                 ? Icons.favorite
                                 : Icons.favorite_border,
-                            color: _isInWishlist
+                            color: context.watch<WishlistProvider>().isProductWishlisted(productId)
                                 ? const Color.fromRGBO(111, 10, 15, 1)
                                 : Colors.grey,
                             size: 24,
@@ -2188,7 +2138,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         );
       }
 
-      await _loadCartCount();
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -14,7 +14,7 @@ import 'package:pujanam/providers/payment_provider.dart';
 import 'package:pujanam/providers/search/search_provider.dart';
 import 'package:pujanam/services/notification_services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:pujanam/providers/wishlist/wishlist_provider.dart';
 import 'pages/home/home_screen.dart';
 import 'pages/orders/orders_screen.dart';
 import 'pages/profile/profile_screen.dart';
@@ -74,6 +74,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()..loadCart()),
         ChangeNotifierProvider(create: (_) => CheckoutProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
+        ChangeNotifierProvider(create: (_) => WishlistProvider()..fetchWishlist()),
       ],
       child: const PujnamApp(),
     ),

@@ -8,7 +8,7 @@ import '../../providers/cart/cart_provider.dart';
 import '../../providers/product/product_provider.dart';
 import '../checkout/checkout_screen.dart';
 import '../products/product_detail_screen.dart';
-import '../auth/login.dart';
+import '../../providers/auth/auth_provider.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -448,51 +448,48 @@ class _CartScreenState extends State<CartScreen> {
                         ElevatedButton(
                           onPressed: () async {
                             final prefs = await SharedPreferences.getInstance();
-                            final customerId = prefs.getString('customer_id');
-
-                            if (!mounted) return;
-
-                            if (customerId == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please login to checkout')),
-                              );
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LoginPage()),
-                              );
-                              return;
+                            final platformToken = prefs.getString('platformToken') ?? '';
+                            if (platformToken.isEmpty) {
+                              if (!context.mounted) return;
+                              final loggedIn = await _showLoginDialog(context);
+                              if (!context.mounted) return;
+                              if (!loggedIn) return;
                             }
 
                             // Check if cart has items
                             if (cartProvider.items.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Your cart is empty'),
-                                  backgroundColor: Colors.orange,
-                                ),
-                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Your cart is empty'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
                               return;
                             }
 
                             // Navigate to CheckoutScreen with cart data and total
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CheckoutScreen(
-                                  cartData: {
-                                    'items': cartProvider.items.map((item) => {
-                                      'title': item.title,
-                                      'weight': item.weight,
-                                      'quantity': item.quantity,
-                                      'price': item.price,
-                                      'image': item.imageUrl,
-                                      'variantId': item.variantId,
-                                    }).toList(),
-                                  },
-                                  totalAmount: cartProvider.subtotal,
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CheckoutScreen(
+                                    cartData: {
+                                      'items': cartProvider.items.map((item) => {
+                                        'title': item.title,
+                                        'weight': item.weight,
+                                        'quantity': item.quantity,
+                                        'price': item.price,
+                                        'image': item.imageUrl,
+                                        'variantId': item.variantId,
+                                      }).toList(),
+                                    },
+                                    totalAmount: cartProvider.subtotal,
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryColor,
@@ -508,6 +505,306 @@ class _CartScreenState extends State<CartScreen> {
                   ),
               ],
             ),
+    );
+  }
+
+  Future<bool> _showLoginDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return _CheckoutLoginDialog(primaryColor: primaryColor);
+      },
+    );
+    return result ?? false;
+  }
+}
+
+class _CheckoutLoginDialog extends StatefulWidget {
+  final Color primaryColor;
+  const _CheckoutLoginDialog({required this.primaryColor});
+
+  @override
+  State<_CheckoutLoginDialog> createState() => _CheckoutLoginDialogState();
+}
+
+class _CheckoutLoginDialogState extends State<_CheckoutLoginDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _mobileController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  
+  bool _isOtpSent = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+  int _resendCooldown = 0;
+  Timer? _cooldownTimer;
+
+  @override
+  void dispose() {
+    _mobileController.dispose();
+    _otpController.dispose();
+    _cooldownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCooldown() {
+    setState(() {
+      _resendCooldown = 60; // 60 seconds cooldown
+    });
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCooldown > 0) {
+        setState(() {
+          _resendCooldown--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _sendOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.sendCheckoutOtp('+91${_mobileController.text}');
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (success) {
+      setState(() {
+        _isOtpSent = true;
+      });
+      _startCooldown();
+    } else {
+      setState(() {
+        _errorMessage = authProvider.errorMessage ?? 'Failed to send OTP';
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (_otpController.text.length != 6) {
+      setState(() {
+        _errorMessage = 'OTP must be 6 digits';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.verifyCheckoutOtp(
+      '+91${_mobileController.text}',
+      _otpController.text,
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (success) {
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } else {
+      setState(() {
+        _errorMessage = authProvider.errorMessage ?? 'Invalid OTP';
+      });
+      _otpController.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.rectangle,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10.0,
+                offset: Offset(0.0, 10.0),
+              ),
+            ],
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _isOtpSent ? 'Verify OTP' : 'Login',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: widget.primaryColor,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context, false),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[100]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.red[700], fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (!_isOtpSent) ...[
+                  Text(
+                    'Enter your WhatsApp mobile number to receive verification code.',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _mobileController,
+                    keyboardType: TextInputType.phone,
+                    maxLength: 10,
+                    decoration: InputDecoration(
+                      prefixText: '+91 ',
+                      labelText: 'WhatsApp Mobile Number',
+                      hintText: '10-digit number',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      counterText: '',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter mobile number';
+                      }
+                      if (value.length != 10) {
+                        return 'Mobile number must be 10 digits';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _sendOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.primaryColor,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Send OTP',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ] else ...[
+                  Text(
+                    'Enter the 6-digit verification code sent to WhatsApp number +91 ${_mobileController.text}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 20, letterSpacing: 8, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      labelText: 'Verification Code',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _isOtpSent = false;
+                            _otpController.clear();
+                            _errorMessage = null;
+                          });
+                        },
+                        child: const Text('Change Number'),
+                      ),
+                      TextButton(
+                        onPressed: _resendCooldown > 0 || _isLoading ? null : _sendOtp,
+                        child: Text(
+                          _resendCooldown > 0 ? 'Resend in ${_resendCooldown}s' : 'Resend OTP',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _verifyOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.primaryColor,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Verify & Proceed',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

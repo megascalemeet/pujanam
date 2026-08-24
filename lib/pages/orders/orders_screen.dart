@@ -5,11 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../main.dart';
 import '../../models/orders/order_models.dart';
 import '../../providers/orders/order_provider.dart';
-import '../order/order_details_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -170,109 +170,130 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
   }
 
-  Widget _buildAddReviewSection(Order order, {bool isSmallScreen = false}) {
-    final String productId = order.items.isNotEmpty ? order.id : '';
-    int selectedRating = 0;
-    final TextEditingController descController = TextEditingController();
+  Widget _buildReviewQuickRow(Order order, {bool isSmallScreen = false}) {
+    final String productId = order.items.isNotEmpty ? order.items[0].productId : '';
 
     return StatefulBuilder(
       builder: (context, setStateLocal) {
-        return Container(
-          margin: const EdgeInsets.only(top: 4),
-          padding: EdgeInsets.all(isSmallScreen ? 14 : 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                primaryColor.withValues(alpha: 0.04),
-                Colors.amber.withValues(alpha: 0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: primaryColor.withValues(alpha: 0.18)),
-          ),
+        int quickRating = 0;
+        return Padding(
+          padding: const EdgeInsets.only(top: 0, bottom: 4, left: 16, right: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.rate_review_rounded, color: primaryColor, size: isSmallScreen ? 18 : 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Write a Review',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 15 : 17,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    icon: Icon(
-                      index < selectedRating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                    ),
-                    onPressed: () {
-                      setStateLocal(() {
-                        selectedRating = index + 1;
-                      });
-                    },
-                  );
-                }),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Share your experience with this order...',
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: primaryColor),
-                  ),
+              Text(
+                'We are glad you loved the product!',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 11 : 12,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: selectedRating == 0
-                      ? null
-                      : () async {
-                          await _submitReview(
-                            productId: productId,
-                            rating: selectedRating,
-                            description: descController.text,
-                            ctx: context,
-                          );
-                          descController.clear();
-                          setStateLocal(() {
-                            selectedRating = 0;
-                          });
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Submit Review'),
+              const SizedBox(height: 6),
+              if (productId.isNotEmpty)
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _fetchReviewStats(productId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Row(
+                        children: [
+                          SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 1.5, color: primaryColor),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('Loading reviews...', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        ],
+                      );
+                    }
+                    if (snapshot.hasData) {
+                      final double avgRating = (snapshot.data!['average_rating'] as num).toDouble();
+                      final int reviewCount = snapshot.data!['review_count'] as int;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (reviewCount > 0)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                ...List.generate(5, (i) {
+                                  final double starVal = avgRating - i;
+                                  IconData icon;
+                                  if (starVal >= 1) {
+                                    icon = Icons.star_rounded;
+                                  } else if (starVal >= 0.5) {
+                                    icon = Icons.star_half_rounded;
+                                  } else {
+                                    icon = Icons.star_outline_rounded;
+                                  }
+                                  return Icon(
+                                    icon,
+                                    color: Colors.amber[600],
+                                    size: isSmallScreen ? 18 : 20,
+                                  );
+                                }),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${avgRating.toStringAsFixed(1)} ($reviewCount ${reviewCount == 1 ? 'review' : 'reviews'})',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 11 : 12,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (reviewCount == 0) ...[ 
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                ...List.generate(5, (i) {
+                                  final starIndex = i + 1;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setStateLocal(() => quickRating = starIndex);
+                                      _showReviewSheet(order, productId: productId, initialRating: starIndex, isSmallScreen: isSmallScreen);
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: Icon(
+                                        quickRating >= starIndex ? Icons.star_rounded : Icons.star_outline_rounded,
+                                        color: quickRating >= starIndex ? Colors.amber[600] : Colors.grey[400],
+                                        size: isSmallScreen ? 26 : 28,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: () => _showReviewSheet(order, productId: productId, initialRating: quickRating, isSmallScreen: isSmallScreen),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Text(
+                                      'Add Review',
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 10 : 11,
+                                        color: primaryColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
-              ),
             ],
           ),
         );
@@ -280,7 +301,195 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  void _showOrderDetails(Order order) {
+  Future<Map<String, dynamic>> _fetchReviewStats(String productId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://new-test.megascale.co.in/api/p1/reviewstats?product_id=$productId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'average_rating': (data['average_rating'] ?? 0).toDouble(),
+          'review_count': data['review_count'] ?? 0,
+        };
+      }
+    } catch (e) {
+      debugPrint('[ReviewStats] Error: $e');
+    }
+    return {'average_rating': 0.0, 'review_count': 0};
+  }
+
+  void _showReviewSheet(
+    Order order, {
+    required String productId,
+    int initialRating = 0,
+    bool isSmallScreen = false,
+  }) {
+    final TextEditingController descController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        int rating = initialRating;
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.rate_review_rounded, color: primaryColor, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Write a Review',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 15 : 17,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.grey[600], size: 20,),
+                          onPressed: () => Navigator.pop(sheetContext),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Share your experience with this product',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (i) {
+                        final starIndex = i + 1;
+                        return GestureDetector(
+                          onTap: () => setSheetState(() => rating = starIndex),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              child: Icon(
+                                rating >= starIndex ? Icons.star_rounded : Icons.star_outline_rounded,
+                                color: rating >= starIndex ? Colors.amber[600] : Colors.grey[350],
+                                size: isSmallScreen ? 36 : 42,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: descController,
+                      maxLines: 4,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Your Review',
+                        hintText: 'Tell others what you think...',
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.only(bottom: 60),
+                          child: Icon(Icons.chat_bubble_outline, color: primaryColor, size: 20),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: primaryColor, width: 1.5),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      style: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                if (rating == 0) {
+                                  ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                    const SnackBar(content: Text('Please select a star rating.')),
+                                  );
+                                  return;
+                                }
+                                if (descController.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                    const SnackBar(content: Text('Please write your review.')),
+                                  );
+                                  return;
+                                }
+                                setSheetState(() => isSubmitting = true);
+                                await _submitReview(
+                                  productId: productId,
+                                  rating: rating,
+                                  description: descController.text.trim(),
+                                  ctx: sheetContext,
+                                );
+                                if (sheetContext.mounted) Navigator.pop(sheetContext);
+                              },
+                        icon: isSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send_rounded, size: 18),
+                        label: Text(
+                          isSubmitting ? 'Submitting...' : 'Submit Review',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: isSmallScreen ? 13 : 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showOrderDetails(Order initialOrder) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final bool isSmallScreen = screenWidth < 360;
@@ -302,236 +511,428 @@ class _OrdersScreenState extends State<OrdersScreen>
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 10, bottom: 10),
-                    height: 4,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: FutureBuilder<Order?>(
+                future: Provider.of<OrderProvider>(context, listen: false).fetchOrderDetails(initialOrder.id),
+                builder: (context, snapshot) {
+                  final order = snapshot.data ?? initialOrder;
+                  final bool isLoading = snapshot.connectionState == ConnectionState.waiting;
+                  
+                  return Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 10),
+                        height: 4,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      Expanded(
+                        child: isLoading ? const Center(child: CircularProgressIndicator()) : ListView(
+                          controller: scrollController,
+                          padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
                           children: [
-                            Text(
-                              'Order Details',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 20 : 22,
-                                fontWeight: FontWeight.bold,
-                                color: primaryColor,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Order Details',
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 20 : 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.close, color: Colors.grey[700]),
+                                  onPressed: () => Navigator.pop(context),
+                                  iconSize: isSmallScreen ? 20 : 24,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            // Order Info Card
+                            Container(
+                              padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          'Order #${order.orderNumber}',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 14 : 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(order.status).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color: _getStatusColor(order.status),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              order.status.toUpperCase(),
+                                              style: TextStyle(
+                                                color: _getStatusColor(order.status),
+                                                fontSize: isSmallScreen ? 10 : 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.calendar_today_outlined,
+                                          size: isSmallScreen ? 14 : 16,
+                                          color: Colors.grey[600]),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Ordered on: ',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: isSmallScreen ? 12 : 14,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          _formatDate(order.createdAt),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: isSmallScreen ? 12 : 14,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(Icons.close, color: Colors.grey[700]),
-                              onPressed: () => Navigator.pop(context),
-                              iconSize: isSmallScreen ? 20 : 24,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Items Ordered',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: order.items.length,
+                              itemBuilder: (context, index) {
+                                final item = order.items[index];
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[100],
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                                            ? ClipRRect(
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: Image.network(
+                                                  item.imageUrl!,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.shopping_bag_outlined,
+                                                color: Colors.grey[400],
+                                              ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.title,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: isSmallScreen ? 14 : 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Qty: ${item.quantity}',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: isSmallScreen ? 12 : 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Text(
+                                        '${order.currency} ${item.price}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isSmallScreen ? 14 : 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                            if (order.shippingAddress != null) ...[
+                              const SizedBox(height: 20),
+                              Container(
+                                padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.calendar_today,
+                                            size: isSmallScreen ? 14 : 16,
+                                            color: primaryColor),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Ordered on: ',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 12 : 13,
+                                            color: Colors.grey[700],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            _formatDate(order.createdAt),
+                                            style: TextStyle(
+                                              fontSize: isSmallScreen ? 12 : 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.location_on_outlined,
+                                            size: isSmallScreen ? 14 : 16,
+                                            color: primaryColor),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Shipping to: ',
+                                          style: TextStyle(
+                                            fontSize: isSmallScreen ? 12 : 13,
+                                            color: Colors.grey[700],
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            [
+                                              order.shippingAddress!.addressLine1.trim(),
+                                              order.shippingAddress!.addressLine2.trim(),
+                                              order.shippingAddress!.city.trim(),
+                                              order.shippingAddress!.state.trim(),
+                                              order.shippingAddress!.pincode.trim(),
+                                              order.shippingAddress!.country.trim(),
+                                            ].where((s) => s.isNotEmpty).join(', '),
+                                            style: TextStyle(
+                                              fontSize: isSmallScreen ? 12 : 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const Divider(height: 30),
+                            _detailRow('Subtotal', '${order.currency} ${order.totalPrice}', isSmallScreen: isSmallScreen),
+                            _detailRow('Shipping', 'Free', isSmallScreen: isSmallScreen),
+                            _detailRow('Total', '${order.currency} ${order.totalPrice}', isTotal: true, isSmallScreen: isSmallScreen),
+                            const SizedBox(height: 25),
+                            if (order.latestShipment != null) ...[
+                              Text(
+                                'Tracking Information',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: isSmallScreen ? 8 : 12),
+                              Container(
+                                padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[200]!),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (order.latestShipment!.carrier != null) ...[
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Icon(Icons.local_shipping_outlined,
+                                              size: isSmallScreen ? 14 : 16,
+                                              color: Colors.grey[600]),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Carrier: ',
+                                            style: TextStyle(
+                                              color: Colors.grey[600],
+                                              fontSize: isSmallScreen ? 12 : 14,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              order.latestShipment!.carrier ?? 'N/A',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: isSmallScreen ? 12 : 14,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.numbers_outlined,
+                                            size: isSmallScreen ? 14 : 16,
+                                            color: Colors.grey[600]),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Tracking #: ',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: isSmallScreen ? 12 : 14,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            order.latestShipment!.trackingNumber,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: isSmallScreen ? 12 : 14,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.content_copy,
+                                              size: isSmallScreen ? 16 : 18),
+                                          onPressed: () {
+                                            if (order.latestShipment!.trackingNumber.isNotEmpty) {
+                                              Clipboard.setData(ClipboardData(text: order.latestShipment!.trackingNumber));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Tracking number copied to clipboard!')),
+                                              );
+                                            }
+                                          },
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 30),
+                            ],
+                            ElevatedButton(
+                              onPressed: () async {
+                                if (order.latestShipment?.trackingUrl != null && order.latestShipment!.trackingUrl!.isNotEmpty) {
+                                  final url = Uri.parse(order.latestShipment!.trackingUrl!);
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url);
+                                  } else {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Could not open tracking link.')),
+                                      );
+                                    }
+                                  }
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Tracking details will be updated soon.'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Track Order',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      'Order #${order.orderNumber}',
-                                      style: TextStyle(
-                                        fontSize: isSmallScreen ? 14 : 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(order.status).withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: BoxDecoration(
-                                            color: _getStatusColor(order.status),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          order.status.toUpperCase(),
-                                          style: TextStyle(
-                                            color: _getStatusColor(order.status),
-                                            fontSize: isSmallScreen ? 10 : 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(Icons.calendar_today_outlined,
-                                      size: isSmallScreen ? 14 : 16,
-                                      color: Colors.grey[600]),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Ordered on: ',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: isSmallScreen ? 12 : 14,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      _formatDate(order.createdAt),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: isSmallScreen ? 12 : 14,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Items Ordered',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 16 : 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: order.items.length,
-                          itemBuilder: (context, index) {
-                            final item = order.items[index];
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Image.network(
-                                              item.imageUrl!,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          )
-                                        : Icon(
-                                            Icons.shopping_bag_outlined,
-                                            color: Colors.grey[400],
-                                          ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.title,
-                                          style: const TextStyle(fontWeight: FontWeight.w600),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          'Qty: ${item.quantity}',
-                                          style: TextStyle(color: Colors.grey[600]),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    '${order.currency} ${item.price}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: primaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        const Divider(height: 30),
-                        _detailRow('Subtotal', '${order.currency} ${order.totalPrice}', isSmallScreen: isSmallScreen),
-                        _detailRow('Shipping', 'Free', isSmallScreen: isSmallScreen),
-                        _detailRow('Total', '${order.currency} ${order.totalPrice}', isTotal: true, isSmallScreen: isSmallScreen),
-                        const SizedBox(height: 25),
-                        _buildAddReviewSection(order, isSmallScreen: isSmallScreen),
-                        const SizedBox(height: 30),
-                        ElevatedButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tracking details will be updated soon.'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Track Order',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ],
+                      ),
+                    ],
+                  );
+                },
               ),
             );
           },
@@ -604,14 +1005,7 @@ class _OrdersScreenState extends State<OrdersScreen>
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OrderDetailsScreen(orderId: order.id),
-                  ),
-                );
-              },
+              onTap: () => _showOrderDetails(order),
               child: Padding(
                 padding: EdgeInsets.all(padding),
                 child: Column(
@@ -754,43 +1148,6 @@ class _OrdersScreenState extends State<OrdersScreen>
                             fontSize: isSmallScreen ? 11 : 12,
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () async {
-                            final List<CartItemInput> cartInputs = order.items.map((item) {
-                              return CartItemInput(
-                                productId: order.id,
-                                variantId: order.id,
-                                price: double.tryParse(item.price) ?? 0.0,
-                                quantity: item.quantity,
-                                sku: 'REORDER-${order.orderNumber}',
-                                title: item.title,
-                              );
-                            }).toList();
-
-                            final success = await Provider.of<OrderProvider>(context, listen: false)
-                                .reorderItems(cartInputs);
-
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    success ? 'Added items to cart successfully!' : 'Failed to reorder items',
-                                  ),
-                                  backgroundColor: success ? Colors.green : Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text('Buy Again'),
-                        ),
                       ],
                     ),
                   ],
@@ -799,6 +1156,8 @@ class _OrdersScreenState extends State<OrdersScreen>
             ),
           ),
         ),
+        if (isFulfilled)
+          _buildReviewQuickRow(order, isSmallScreen: isSmallScreen),
       ],
     );
   }

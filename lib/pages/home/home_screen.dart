@@ -11,8 +11,11 @@ import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../models/product/product_response_model.dart';
+import '../../providers/cart/cart_provider.dart';
 import '../../providers/category/category_provider.dart';
 import '../../providers/product/product_provider.dart';
+import '../../providers/wishlist/wishlist_provider.dart';
+import '../cart/cart_screen.dart';
 import '../products/product_detail_screen.dart';
 import '../products/product_list_screen.dart';
 import '../search/search_screen.dart';
@@ -37,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
   final ScrollController _servedToGodController = ScrollController();
   final ScrollController _featuredProductsController = ScrollController();
-  final Set<String> _wishlistedIds = {};
 
   @override
   void initState() {
@@ -106,14 +108,87 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _toggleWishlist(String id) {
-    setState(() {
-      if (_wishlistedIds.contains(id)) {
-        _wishlistedIds.remove(id);
+  int? _extractVariantId(dynamic product) {
+    try {
+      if (product == null) return null;
+      dynamic variantsList;
+      if (product is Map) {
+        variantsList = product['variants'];
       } else {
-        _wishlistedIds.add(id);
+        try {
+          variantsList = product.variants;
+        } catch (e) {
+          // Fallback
+        }
       }
-    });
+
+      if (variantsList is List && variantsList.isNotEmpty) {
+        final firstVariant = variantsList[0];
+        if (firstVariant == null) return null;
+
+        if (firstVariant is Map) {
+          final idVal = firstVariant['id'];
+          if (idVal != null) {
+            return int.tryParse(idVal.toString().split('/').last);
+          }
+        } else {
+          try {
+            final idVal = firstVariant.id;
+            if (idVal != null) {
+              return int.tryParse(idVal.toString().split('/').last);
+            }
+          } catch (e) {
+            // Fallback
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error extracting variant ID: $e');
+    }
+    return null;
+  }
+
+  Future<void> _toggleWishlist(String id, {int? variantId}) async {
+    try {
+      final wishlistProvider = Provider.of<WishlistProvider>(context, listen: false);
+      final wasWishlisted = wishlistProvider.isProductWishlisted(id);
+      
+      final success = await wishlistProvider.toggleWishlist(id, variantId: variantId);
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                wasWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
+              ),
+              backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(wishlistProvider.errorMessage ?? 'Failed to update wishlist'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error updating wishlist'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    }
   }
 
   void _scrollList(ScrollController controller, double offset) {
@@ -161,47 +236,58 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
         ),
         actions: [
-          IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  Icons.shopping_cart_outlined,
-                  color: Colors.white,
-                  size: iconSize,
-                ),
-                Positioned(
-                  right: -8,
-                  top: -10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+          Consumer<CartProvider>(
+            builder: (context, cartProvider, child) {
+              final cartCount = cartProvider.items.length;
+              return IconButton(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      Icons.shopping_cart_outlined,
+                      color: Colors.white,
+                      size: iconSize,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.amber,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 20,
-                      minHeight: 20,
-                    ),
-                    child: const Center(
-                      child: Text(
-                        "2",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                    if (cartCount > 0)
+                      Positioned(
+                        right: -8,
+                        top: -10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 20,
+                            minHeight: 20,
+                          ),
+                          child: Center(
+                            child: Text(
+                              cartCount.toString(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CartScreen()),
+                  );
+                },
+              );
+            },
           ),
           IconButton(
             icon: Stack(
@@ -683,7 +769,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             top: 10,
                             right: 10,
                             child: GestureDetector(
-                              onTap: () => _toggleWishlist(id),
+                              onTap: () => _toggleWishlist(
+                                id,
+                                variantId: _extractVariantId(product),
+                              ),
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
@@ -691,10 +780,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  _wishlistedIds.contains(id)
+                                  context.watch<WishlistProvider>().isProductWishlisted(id)
                                       ? Icons.favorite
                                       : Icons.favorite_border,
-                                  color: _wishlistedIds.contains(id)
+                                  color: context.watch<WishlistProvider>().isProductWishlisted(id)
                                       ? const Color.fromRGBO(111, 10, 15, 1)
                                       : Colors.grey,
                                   size: 18,
@@ -1006,7 +1095,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     top: 0,
                     right: 0,
                     child: GestureDetector(
-                      onTap: () => _toggleWishlist(id),
+                      onTap: () => _toggleWishlist(
+                        id,
+                        variantId: _extractVariantId(product),
+                      ),
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
@@ -1020,10 +1112,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         child: Icon(
-                          _wishlistedIds.contains(id)
+                          context.watch<WishlistProvider>().isProductWishlisted(id)
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: _wishlistedIds.contains(id)
+                          color: context.watch<WishlistProvider>().isProductWishlisted(id)
                               ? const Color.fromRGBO(111, 10, 15, 1)
                               : Colors.grey,
                           size: 12,
@@ -1444,7 +1536,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 top: 8,
                                 right: 8,
                                 child: GestureDetector(
-                                  onTap: () => _toggleWishlist(id),
+                                  onTap: () => _toggleWishlist(
+                                    id,
+                                    variantId: _extractVariantId(product),
+                                  ),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 300),
                                     padding: const EdgeInsets.all(6),
@@ -1476,10 +1571,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ),
                                           )
                                         : Icon(
-                                            _wishlistedIds.contains(id)
+                                            context.watch<WishlistProvider>().isProductWishlisted(id)
                                                 ? Icons.favorite
                                                 : Icons.favorite_border,
-                                            color: _wishlistedIds.contains(id)
+                                            color: context.watch<WishlistProvider>().isProductWishlisted(id)
                                                 ? const Color.fromRGBO(
                                                     111,
                                                     10,

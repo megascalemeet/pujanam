@@ -34,6 +34,18 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
+  Future<Order?> fetchOrderDetails(String orderId) async {
+    try {
+      final responseData = await _apiService.fetchOrderDetails(orderId);
+      if (responseData['success'] == true && responseData['data'] != null) {
+        return Order.fromJson(responseData['data']);
+      }
+    } catch (e) {
+      debugPrint('Error fetching order details: $e');
+    }
+    return null;
+  }
+
   Future<bool> reorderItems(List<CartItemInput> items) async {
     _isLoading = true;
     _errorMessage = null;
