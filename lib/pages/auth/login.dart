@@ -1,12 +1,9 @@
-// ignore_for_file: avoid_print, use_build_context_synchronously
-
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../main.dart';
 import '../../providers/auth/auth_provider.dart';
+import '../../providers/wishlist/wishlist_provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -90,7 +87,7 @@ class _LoginPageState extends State<LoginPage>
   Future<void> handleVerifyOtp() async {
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.verifyOtp(
-      mobileController.text,
+      '+91${mobileController.text}',
       otpController.text,
     );
     if (success) {
@@ -98,17 +95,14 @@ class _LoginPageState extends State<LoginPage>
         const SnackBar(
           content: Text(
             'Login Successful!',
-            style: TextStyle(
-              fontSize: 16,
-              fontFamily: 'Poppins',
-              color: Colors.white,
-            ),
+            style: TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
           ),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 6),
           behavior: SnackBarBehavior.floating,
         ),
       );
+      context.read<WishlistProvider>().fetchWishlist();
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
       );
@@ -117,11 +111,7 @@ class _LoginPageState extends State<LoginPage>
         SnackBar(
           content: Text(
             authProvider.errorMessage!,
-            style: const TextStyle(
-              fontSize: 16,
-              fontFamily: 'Poppins',
-              color: Colors.white,
-            ),
+            style: const TextStyle(fontSize: 16, fontFamily: 'Poppins', color: Colors.white),
           ),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 6),

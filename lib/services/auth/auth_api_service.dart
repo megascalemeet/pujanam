@@ -1,10 +1,9 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../../core/constants/api_constants.dart';
 import '../../models/auth/auth_models.dart';
+import '../../models/auth/checkout_auth_models.dart';
 
 class AuthApiService {
   static const String _baseUrl = ApiConstants.baseUrl;
@@ -58,6 +57,61 @@ class AuthApiService {
     debugPrint('================================');
 
     return VerifyOtpResponse.fromJson(json.decode(response.body));
+  }
+
+  Future<SendCheckoutOtpResponse> sendCheckoutOtp(String phone) async {
+    final url = '${ApiConstants.checkoutBaseUrl}/checkout/auth/phone/send-otp';
+
+    debugPrint('========== SEND CHECKOUT OTP ==========');
+    debugPrint('URL: $url');
+    debugPrint('Method: POST');
+    debugPrint('Phone: $phone');
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'phone': phone,
+        'merchantId': ApiConstants.checkoutMerchantId,
+        'channel': 'whatsapp',
+      }),
+    );
+
+    debugPrint('Status Code: ${response.statusCode}');
+    debugPrint('Response: ${response.body}');
+    debugPrint('=======================================');
+
+    return SendCheckoutOtpResponse.fromJson(json.decode(response.body));
+  }
+
+  Future<VerifyCheckoutOtpResponse> verifyCheckoutOtp(String phone, String otp) async {
+    final url = '${ApiConstants.checkoutBaseUrl}/checkout/auth/phone/verify-otp';
+
+    debugPrint('========== VERIFY CHECKOUT OTP ==========');
+    debugPrint('URL: $url');
+    debugPrint('Method: POST');
+    debugPrint('Phone: $phone');
+    debugPrint('OTP: $otp');
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'phone': phone,
+        'otp': otp,
+        'merchantId': ApiConstants.checkoutMerchantId,
+      }),
+    );
+
+    debugPrint('Status Code: ${response.statusCode}');
+    debugPrint('Response: ${response.body}');
+    debugPrint('=========================================');
+
+    return VerifyCheckoutOtpResponse.fromJson(json.decode(response.body));
   }
 
   Future<void> registerGuestFcmToken({

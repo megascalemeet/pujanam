@@ -72,4 +72,27 @@ class ProductApiService {
       throw Exception('Failed to submit review: ${response.statusCode}');
     }
   }
+
+  /// Fetch product review summary
+  Future<Map<String, dynamic>> fetchProductReviewSummary(String productId) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/shop/reviews/product/$productId/summary');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopfront-Token': ApiConstants.shopfrontToken,
+        'x-store-id': ApiConstants.storeId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final decodedJson = json.decode(response.body);
+      if (decodedJson['success'] == true && decodedJson['data'] != null) {
+        return decodedJson['data'];
+      }
+      return {};
+    } else {
+      throw Exception('Failed to load review summary: ${response.statusCode}');
+    }
+  }
 }

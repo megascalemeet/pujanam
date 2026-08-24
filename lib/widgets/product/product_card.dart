@@ -1,13 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../models/product/product_response_model.dart';
-import '../../pages/auth/login.dart';
 import '../../pages/products/product_detail_screen.dart';
 import '../../theme/app_color.dart';
+import 'package:provider/provider.dart';
+import '../../providers/wishlist/wishlist_provider.dart';
 
 class ProductCard extends StatefulWidget {
   final dynamic product;
@@ -25,7 +23,7 @@ class ProductCard extends StatefulWidget {
 
 class _ProductCardState extends State<ProductCard>
     with SingleTickerProviderStateMixin {
-  bool _isInWishlist = false;
+
   bool _isAddingToWishlist = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -44,7 +42,6 @@ class _ProductCardState extends State<ProductCard>
       curve: Curves.easeIn,
     );
     _animationController.forward();
-    _isInWishlist = widget.isInitiallyInWishlist;
     _parseRating();
   }
 
@@ -87,105 +84,82 @@ class _ProductCardState extends State<ProductCard>
     return widget.product['title']?.toString() ?? 'No Title';
   }
 
+  int? _variantId() {
+    try {
+      if (widget.product is ProductModel) {
+        final p = widget.product as ProductModel;
+        if (p.variants.isNotEmpty) {
+          final idStr = p.variants[0].id.toString().split('/').last;
+          return int.tryParse(idStr);
+        }
+      } else {
+        final variants = widget.product['variants'] as List<dynamic>? ?? [];
+        final firstVariant = variants.isNotEmpty ? variants[0] : null;
+        if (firstVariant != null && firstVariant['id'] != null) {
+          final idStr = firstVariant['id'].toString().split('/').last;
+          return int.tryParse(idStr);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting variant ID: $e');
+    }
+    return null;
+  }
+
   Future<void> toggleWishlist(BuildContext context) async {
     if (_isAddingToWishlist) return;
     final productId = _productId();
 
     setState(() {
-      _isInWishlist = !_isInWishlist;
       _isAddingToWishlist = true;
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('customer_id');
-      if (customerId == null) {
-        setState(() {
-          _isInWishlist = false;
-          _isAddingToWishlist = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please login to manage wishlist'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 1),
-          ),
-        );
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        });
-        return;
-      }
+      final wishlistProvider = Provider.of<WishlistProvider>(context, listen: false);
+      final wasWishlisted = wishlistProvider.isProductWishlisted(productId);
+      final vId = _variantId();
+      
+      final success = await wishlistProvider.toggleWishlist(productId, variantId: vId);
 
-      http.Response response;
-      if (_isInWishlist) {
-        response = await http
-            .post(
-              Uri.parse(
-                'https://new-test.megascale.co.in/api/p1/addtowishlist',
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                wasWishlisted ? 'Removed from wishlist' : 'Added to wishlist',
               ),
-              headers: {
-                'Content-Type': 'application/json',
-                'Connection': 'Keep-Alive',
-              },
-              body: json.encode({
-                'customer_id': customerId,
-                'product_id': productId,
-              }),
-            )
-            .timeout(const Duration(seconds: 30));
-      } else {
-        response = await http
-            .delete(
-              Uri.parse(
-                'https://new-test.megascale.co.in/api/p1/removewishlist',
-              ),
-              headers: {
-                'Content-Type': 'application/json',
-                'Connection': 'Keep-Alive',
-              },
-              body: json.encode({
-                'customer_id': customerId,
-                'product_id': productId,
-              }),
-            )
-            .timeout(const Duration(seconds: 30));
-      }
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isInWishlist ? 'Added to wishlist' : 'Removed from wishlist',
+              backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
+              duration: const Duration(seconds: 1),
             ),
-            backgroundColor: const Color.fromRGBO(111, 10, 15, 1),
-            duration: const Duration(seconds: 1),
-          ),
-        );
+          );
+        }
       } else {
-        setState(() => _isInWishlist = !_isInWishlist);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update wishlist'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 1),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(wishlistProvider.errorMessage ?? 'Failed to update wishlist'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
-      setState(() => _isInWishlist = !_isInWishlist);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error updating wishlist'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 1),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error updating wishlist'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
     } finally {
-      setState(() => _isAddingToWishlist = false);
+      if (mounted) {
+        setState(() {
+          _isAddingToWishlist = false;
+        });
+      }
     }
   }
 
@@ -423,10 +397,10 @@ class _ProductCardState extends State<ProductCard>
                           ),
                         )
                       : Icon(
-                          _isInWishlist
+                          context.watch<WishlistProvider>().isProductWishlisted(_productId())
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: _isInWishlist
+                          color: context.watch<WishlistProvider>().isProductWishlisted(_productId())
                               ? const Color.fromRGBO(111, 10, 15, 1)
                               : Colors.grey[600],
                           size: 16,

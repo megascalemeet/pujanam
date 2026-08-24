@@ -9,25 +9,23 @@ import '../../models/orders/order_models.dart';
 class OrderApiService {
   static const String _baseUrl = ApiConstants.checkoutBaseUrl;
   static const String _apiKey = ApiConstants.checkoutApiKey;
-  static const String _storeOrigin = ApiConstants.storeOrigin;
 
 
   Future<MergedOrdersResponse> fetchOrders() async {
     final prefs = await SharedPreferences.getInstance();
-    final platformToken = prefs.getString('platformToken') ?? '';
+    final accessToken = prefs.getString('accessToken') ?? '';
 
-    final url = '$_baseUrl/v1/customer-portal/orders?page=1&limit=20';
+    final url = '${ApiConstants.baseUrl}/shop/customer/me';
 
     debugPrint('========== FETCH ORDERS ==========');
     debugPrint('URL: $url');
-    debugPrint('Platform Token: $platformToken');
+    debugPrint('Headers (Payload): X-Shopfront-Token: ${ApiConstants.shopfrontToken}, Authorization: Bearer $accessToken');
 
     final response = await http.get(
       Uri.parse(url),
       headers: {
-        'x-api-key': _apiKey,
-        'x-store-origin': _storeOrigin,
-        'Authorization': 'Bearer $platformToken',
+        'X-Shopfront-Token': ApiConstants.shopfrontToken,
+        'Authorization': 'Bearer $accessToken',
       },
     );
 
@@ -59,5 +57,30 @@ class OrderApiService {
     debugPrint('====================================================');
 
     return AddToCartResponse.fromJson(json.decode(response.body));
+  }
+
+  Future<dynamic> fetchOrderDetails(String orderId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('accessToken') ?? '';
+
+    final url = '${ApiConstants.baseUrl}/shop/orders/$orderId';
+
+    debugPrint('========== FETCH ORDER DETAILS ==========');
+    debugPrint('URL: $url');
+    debugPrint('Headers (Payload): X-Shopfront-Token: ${ApiConstants.shopfrontToken}, Authorization: Bearer $accessToken');
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'X-Shopfront-Token': ApiConstants.shopfrontToken,
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    debugPrint('Status Code: ${response.statusCode}');
+    debugPrint('Response: ${response.body}');
+    debugPrint('=========================================');
+
+    return json.decode(response.body);
   }
 }
