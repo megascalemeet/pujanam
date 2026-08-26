@@ -3,8 +3,81 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pujanam/theme/app_color.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class Contactus extends StatelessWidget {
+import '../../services/enquiry_service.dart';
+
+class Contactus extends StatefulWidget {
   const Contactus({super.key});
+
+  @override
+  State<Contactus> createState() => _ContactusState();
+}
+
+class _ContactusState extends State<Contactus> {
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _messageController = TextEditingController();
+  final _enquiryService = EnquiryService();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _mobileController.dispose();
+    _emailController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  void _clearFields() {
+    _firstNameController.clear();
+    _lastNameController.clear();
+    _mobileController.clear();
+    _emailController.clear();
+    _messageController.clear();
+  }
+
+  Future<void> _submitEnquiry() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final success = await _enquiryService.submitEnquiry(
+      firstName: _firstNameController.text,
+      lastName: _lastNameController.text,
+      mobile: _mobileController.text,
+      email: _emailController.text,
+      message: _messageController.text,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Enquiry submitted successfully!'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        _clearFields();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to submit enquiry. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,71 +105,192 @@ class Contactus extends StatelessWidget {
         child: Column(
           children: [
             // Header Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: brandColor,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(32),
-                  bottomRight: Radius.circular(32),
+
+            // Enquiry Form
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    'Get in Touch with Us',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Poppins',
-                    ),
-                    textAlign: TextAlign.center,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // const Text(
+                      //   'Send us an Enquiry',
+                      //   style: TextStyle(
+                      //     fontSize: 18,
+                      //     fontWeight: FontWeight.bold,
+                      //     color: brandColor,
+                      //     fontFamily: 'Poppins',
+                      //   ),
+                      // ),
+                      //const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: _firstNameController,
+                        label: 'First Name',
+                        hint: 'Enter your first name',
+                        validator: (value) =>
+                            value!.isEmpty ? 'Please enter first name' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _lastNameController,
+                        label: 'Last Name',
+                        hint: 'Enter your last name',
+                        validator: (value) =>
+                            value!.isEmpty ? 'Please enter last name' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        // prefixText: "+91 ",
+                        controller: _mobileController,
+                        label: 'Mobile',
+                        hint: 'Enter your mobile number',
+                        keyboardType: TextInputType.phone,
+                        validator: (value) => value!.length < 10
+                            ? 'Enter a valid mobile number'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _emailController,
+                        label: 'Email',
+                        hint: 'Enter your email',
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) => !value!.contains('@')
+                            ? 'Enter a valid email'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _messageController,
+                        label: 'Message',
+                        hint: 'How can we help you?',
+                        maxLines: 4,
+                        validator: (value) =>
+                            value!.isEmpty ? 'Please enter your message' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isSubmitting ? null : _submitEnquiry,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: brandColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Submit',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Nilkanth Store Trade Name : ILAVIZ',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
-                      fontFamily: 'Poppins',
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
             ),
 
-            // Contact Info Cards
+            // Support Section
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildContactCard(
-                    icon: Icons.phone_outlined,
-                    title: 'Phone',
-                    content: '+91 82388 11190',
-                    brandColor: brandColor,
-                    onTap: () => _launchPhone('+918238811190'),
+                  const Text(
+                    'Support',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: brandColor,
+                      fontFamily: 'Poppins',
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  _buildContactCard(
-                    icon: Icons.email_outlined,
-                    title: 'Email',
-                    content: 'shrinilkanthstore@gmail.com',
+                  _buildSupportItem(
+                    title: 'Sales Support',
+                    number: '9726778118',
                     brandColor: brandColor,
-                    onTap: () => _launchEmail(),
                   ),
-                  const SizedBox(height: 12),
-                  _buildContactCard(
-                    icon: Icons.location_on_outlined,
-                    title: 'Address',
-                    content:
-                        'Nilkanth Store Trade Name : ILAVIZ, Ground floor, Block / Survey No - 557, Shree Swaminarayan Gurukul Trust, Poicha Swaminarayan Temple, Narmada, Gujarat - 393145',
+                  const SizedBox(height: 8),
+                  _buildSupportItem(
+                    title: 'After Sales Support',
+                    number: '9310501040',
                     brandColor: brandColor,
-                    onTap: () => _launchLocation(
-                      'Poicha Swaminarayan Temple, Narmada, Gujarat',
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSupportItem(
+                    title: 'Complain & Grievance',
+                    number: '9824878118',
+                    brandColor: brandColor,
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Working Hours:',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '10:00 AM - 7:00 PM (Monday - Saturday)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -160,12 +354,76 @@ class Contactus extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard({
-    required IconData icon,
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    String? prefixText,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          validator: validator,
+
+          style: const TextStyle(fontSize: 14, fontFamily: 'Poppins'),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[400],
+              fontFamily: 'Poppins',
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            prefixText: prefixText,
+            prefixStyle: const TextStyle(fontSize: 14, fontFamily: 'Poppins'),
+            //filled: true,
+            //fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey[600]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey[600]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSupportItem({
     required String title,
-    required String content,
+    required String number,
     required Color brandColor,
-    required VoidCallback onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -182,7 +440,7 @@ class Contactus extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () => _launchPhone(number),
           borderRadius: BorderRadius.circular(15),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -194,7 +452,11 @@ class Contactus extends StatelessWidget {
                     color: brandColor.withOpacity(0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, size: 22, color: brandColor),
+                  child: Icon(
+                    Icons.phone_outlined,
+                    size: 22,
+                    color: brandColor,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -212,7 +474,7 @@ class Contactus extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        content,
+                        number,
                         style: const TextStyle(
                           fontSize: 13,
                           height: 1.5,
@@ -240,23 +502,6 @@ class Contactus extends StatelessWidget {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (!await launchUrl(phoneUri)) {
       debugPrint('Could not launch $phoneUri');
-    }
-  }
-
-  Future<void> _launchEmail() async {
-    final Uri uri = Uri.parse('mailto:shrinilkanthstore@gmail.com');
-    if (!await launchUrl(uri)) {
-      debugPrint('Could not launch $uri');
-    }
-  }
-
-  void _launchLocation(String location) async {
-    String query = Uri.encodeComponent(location);
-    final Uri url = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$query',
-    );
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      debugPrint('Could not launch $url');
     }
   }
 }
