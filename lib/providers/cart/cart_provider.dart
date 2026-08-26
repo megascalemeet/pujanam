@@ -158,9 +158,11 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addToCart(CartItem item) async {
+  Future<bool> addToCart(CartItem item) async {
     _isLoading = true;
     notifyListeners();
+
+    final backupItems = List<CartItem>.from(_items);
 
     try {
       final wasEmpty = _items.isEmpty;
@@ -180,6 +182,7 @@ class CartProvider with ChangeNotifier {
 
       await _saveCart();
       final prefs = await SharedPreferences.getInstance();
+      bool success = false;
 
       if (wasEmpty || _sessionToken == null) {
         final response = await _apiService.createCheckoutSession(_items);
@@ -191,6 +194,7 @@ class CartProvider with ChangeNotifier {
           if (_sessionId != null) {
             await prefs.setString('checkout_session_id', _sessionId!);
           }
+          success = true;
         }
       } else {
         final response = await _apiService.updateCartItems(
@@ -199,6 +203,7 @@ class CartProvider with ChangeNotifier {
         );
         if (response.success) {
           _checkoutTotal = response.grandTotal;
+          success = true;
         } else {
           final newResponse = await _apiService.createCheckoutSession(_items);
           if (newResponse.success && newResponse.token != null) {
@@ -209,11 +214,22 @@ class CartProvider with ChangeNotifier {
             if (_sessionId != null) {
               await prefs.setString('checkout_session_id', _sessionId!);
             }
+            success = true;
           }
         }
       }
+
+      if (!success) {
+        _items = backupItems;
+        await _saveCart();
+        return false;
+      }
+      return true;
     } catch (e) {
       debugPrint('Error adding to cart: $e');
+      _items = backupItems;
+      await _saveCart();
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

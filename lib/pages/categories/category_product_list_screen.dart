@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pujanam/pages/products/product_detail_screen.dart';
+import 'package:pujanam/pages/auth/login.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../models/cart/cart_models.dart';
@@ -171,6 +173,26 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
     dynamic product,
   ) async {
     if (_isAddingToWishlist[productId] ?? false) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to manage wishlist'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     final normalizedId = _getProductId(productId);
     final variantId = _extractVariantId(product);
 
@@ -235,6 +257,25 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   }
 
   Future<void> _addToCart(BuildContext context, dynamic product) async {
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to add product to cart'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     String id = '';
     String title = '';
     if (product is ProductModel) {
@@ -282,8 +323,20 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
         if (product.variants.isNotEmpty) {
           final v = product.variants[0];
           if (v is Map) {
-            priceAmount = v['price']?.toString();
-            compareAtAmount = v['compareAtPrice']?.toString();
+            final pVal = v['price'];
+            if (pVal is Map) {
+              priceAmount = pVal['amount']?.toString();
+            } else {
+              priceAmount = pVal?.toString();
+            }
+
+            final capVal = v['compareAtPrice'];
+            if (capVal is Map) {
+              compareAtAmount = capVal['amount']?.toString();
+            } else {
+              compareAtAmount = capVal?.toString();
+            }
+
             sku = v['sku']?.toString();
             variantId = v['id']?.toString().split('/').last;
             weight = v['title']?.toString() ?? "Default";
@@ -296,12 +349,20 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
         final variants = product['variants'] as List<dynamic>? ?? [];
         final firstVariant = variants.isNotEmpty ? variants[0] : null;
         if (firstVariant != null) {
-          priceAmount =
-              firstVariant['price']?.toString() ??
-              firstVariant['price']?['amount']?.toString();
-          compareAtAmount =
-              firstVariant['compareAtPrice']?.toString() ??
-              firstVariant['compareAtPrice']?['amount']?.toString();
+          final pVal = firstVariant['price'];
+          if (pVal is Map) {
+            priceAmount = pVal['amount']?.toString();
+          } else {
+            priceAmount = pVal?.toString();
+          }
+
+          final capVal = firstVariant['compareAtPrice'];
+          if (capVal is Map) {
+            compareAtAmount = capVal['amount']?.toString();
+          } else {
+            compareAtAmount = capVal?.toString();
+          }
+
           sku = firstVariant['sku']?.toString();
           variantId = firstVariant['id']?.toString().split('/').last;
           weight = firstVariant['title']?.toString() ?? "Default";
@@ -328,16 +389,28 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
         weight: weight,
       );
 
-      await cartProvider.addToCart(item);
+      final success = await cartProvider.addToCart(item);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Added to cart'),
-            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
-            duration: Duration(seconds: 1),
-          ),
-        );
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Added to cart'),
+              backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to add to cart'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -710,22 +783,68 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Hero(
-                    tag: 'product-${_getProductId(id)}',
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(15),
-                      ),
-                      child: Image.network(
-                        imageUrl ?? 'https://via.placeholder.com/150',
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(Icons.error),
+                  child: Stack(
+                    children: [
+                      Hero(
+                        tag: 'product-${_getProductId(id)}',
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(15),
+                          ),
+                          child: Image.network(
+                            imageUrl ?? 'https://via.placeholder.com/150',
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.error),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () => _addToCart(context, originalProduct),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: _isAddingToCart[id.split('/').last] == true
+                                ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        brandColor,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.shopping_cart_outlined,
+                                    color: context
+                                            .watch<CartProvider>()
+                                            .isInCart(id.split('/').last)
+                                        ? brandColor
+                                        : Colors.grey[600],
+                                    size: 16,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(
@@ -789,46 +908,7 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                               ),
                             ),
                           ],
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: () => _addToCart(context, originalProduct),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                              child: _isAddingToCart[id.split('/').last] == true
-                                  ? SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              brandColor,
-                                            ),
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.shopping_cart_outlined,
-                                      color:
-                                          context
-                                              .watch<CartProvider>()
-                                              .isInCart(id.split('/').last)
-                                          ? brandColor
-                                          : Colors.grey[600],
-                                      size: 14,
-                                    ),
-                            ),
-                          ),
+
                         ],
                       ),
                       const SizedBox(height: 4),

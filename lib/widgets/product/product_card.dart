@@ -1,12 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:pujanam/models/category/category_product_response_model.dart';
 import 'package:pujanam/models/product/product_response_model.dart';
 
 import '../../models/cart/cart_models.dart';
 import '../../pages/products/product_detail_screen.dart';
+import '../../pages/auth/login.dart';
 import '../../providers/cart/cart_provider.dart';
 import '../../providers/wishlist/wishlist_provider.dart';
 
@@ -132,6 +134,26 @@ class _ProductCardState extends State<ProductCard>
 
   Future<void> toggleWishlist(BuildContext context) async {
     if (_isAddingToWishlist) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to manage wishlist'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     final productId = _productId();
 
     setState(() {
@@ -198,6 +220,25 @@ class _ProductCardState extends State<ProductCard>
   Future<void> addToCart(BuildContext context) async {
     if (_isAddingToCart) return;
 
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to add product to cart'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _isAddingToCart = true;
     });
@@ -230,8 +271,20 @@ class _ProductCardState extends State<ProductCard>
         if (p.variants.isNotEmpty) {
           final v = p.variants[0];
           if (v is Map) {
-            priceAmount = v['price']?.toString();
-            compareAtAmount = v['compareAtPrice']?.toString();
+            final pVal = v['price'];
+            if (pVal is Map) {
+              priceAmount = pVal['amount']?.toString();
+            } else {
+              priceAmount = pVal?.toString();
+            }
+
+            final capVal = v['compareAtPrice'];
+            if (capVal is Map) {
+              compareAtAmount = capVal['amount']?.toString();
+            } else {
+              compareAtAmount = capVal?.toString();
+            }
+
             sku = v['sku']?.toString();
             variantId = v['id']?.toString().split('/').last;
             weight = v['title']?.toString() ?? "Default";
@@ -244,12 +297,20 @@ class _ProductCardState extends State<ProductCard>
         final variants = widget.product['variants'] as List<dynamic>? ?? [];
         final firstVariant = variants.isNotEmpty ? variants[0] : null;
         if (firstVariant != null) {
-          priceAmount =
-              firstVariant['price']?.toString() ??
-              firstVariant['price']?['amount']?.toString();
-          compareAtAmount =
-              firstVariant['compareAtPrice']?.toString() ??
-              firstVariant['compareAtPrice']?['amount']?.toString();
+          final pVal = firstVariant['price'];
+          if (pVal is Map) {
+            priceAmount = pVal['amount']?.toString();
+          } else {
+            priceAmount = pVal?.toString();
+          }
+
+          final capVal = firstVariant['compareAtPrice'];
+          if (capVal is Map) {
+            compareAtAmount = capVal['amount']?.toString();
+          } else {
+            compareAtAmount = capVal?.toString();
+          }
+
           sku = firstVariant['sku']?.toString();
           variantId = firstVariant['id']?.toString().split('/').last;
           weight = firstVariant['title']?.toString() ?? "Default";
@@ -276,16 +337,28 @@ class _ProductCardState extends State<ProductCard>
         weight: weight,
       );
 
-      await cartProvider.addToCart(item);
+      final success = await cartProvider.addToCart(item);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Added to cart'),
-            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
-            duration: Duration(seconds: 1),
-          ),
-        );
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Added to cart'),
+              backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to add to cart'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -348,8 +421,19 @@ class _ProductCardState extends State<ProductCard>
       if (p.variants.isNotEmpty) {
         final v = p.variants[0];
         if (v is Map) {
-          priceAmount = v['price']?.toString();
-          compareAtAmount = v['compareAtPrice']?.toString();
+          final pVal = v['price'];
+          if (pVal is Map) {
+            priceAmount = pVal['amount']?.toString();
+          } else {
+            priceAmount = pVal?.toString();
+          }
+
+          final capVal = v['compareAtPrice'];
+          if (capVal is Map) {
+            compareAtAmount = capVal['amount']?.toString();
+          } else {
+            compareAtAmount = capVal?.toString();
+          }
         }
       }
       priceAmount ??= p.price.toString();
@@ -359,12 +443,19 @@ class _ProductCardState extends State<ProductCard>
       final variants = widget.product['variants'] as List<dynamic>? ?? [];
       final firstVariant = variants.isNotEmpty ? variants[0] : null;
       if (firstVariant != null) {
-        priceAmount =
-            firstVariant['price']?.toString() ??
-            firstVariant['price']?['amount']?.toString();
-        compareAtAmount =
-            firstVariant['compareAtPrice']?.toString() ??
-            firstVariant['compareAtPrice']?['amount']?.toString();
+        final pVal = firstVariant['price'];
+        if (pVal is Map) {
+          priceAmount = pVal['amount']?.toString();
+        } else {
+          priceAmount = pVal?.toString();
+        }
+
+        final capVal = firstVariant['compareAtPrice'];
+        if (capVal is Map) {
+          compareAtAmount = capVal['amount']?.toString();
+        } else {
+          compareAtAmount = capVal?.toString();
+        }
       }
 
       final images = widget.product['media']?.isNotEmpty == true

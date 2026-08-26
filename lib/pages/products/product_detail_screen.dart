@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/cart/cart_models.dart';
 import '../../models/category/category_product_response_model.dart';
 import '../../models/product/add_review_model.dart';
@@ -168,6 +169,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> toggleWishlist(BuildContext context) async {
     if (_isAddingToWishlist) return;
 
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to manage wishlist'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _isAddingToWishlist = true;
     });
@@ -247,33 +267,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return ((mrp - price) / mrp * 100);
   }
 
-  Future<void> _shareProductToWhatsApp() async {
+  Future<void> _shareProduct() async {
     try {
       final handle = productHandle;
       final String shareUrl = "https://store.nilkanthdham.in/products/$handle";
       final text = "Check out this product: $shareUrl";
-      final url = Uri.parse(
-        'whatsapp://send?text=${Uri.encodeComponent(text)}',
-      );
-
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url);
-      } else {
-        final webUrl = Uri.parse(
-          'https://wa.me/?text=${Uri.encodeComponent(text)}',
-        );
-        if (await canLaunchUrl(webUrl)) {
-          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Could not open WhatsApp.')),
-            );
-          }
-        }
-      }
+      await Share.share(text);
     } catch (e) {
-      debugPrint('Error sharing to WhatsApp: $e');
+      debugPrint('Error sharing product: $e');
     }
   }
 
@@ -634,7 +635,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
-                  onTap: _shareProductToWhatsApp,
+                  onTap: _shareProduct,
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: const BoxDecoration(
@@ -1021,11 +1022,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _buildBadges() {
     final List<Map<String, dynamic>> badges = [
-      {'icon': Icons.local_florist, 'label': '100% Pure'},
+      {'icon': Icons.local_florist, 'label': 'Natural Fragrance Oils'},
+      {'icon': Icons.air, 'label': 'Long Lasting Aroma'},
       {'icon': Icons.lock, 'label': 'Secure Payment'},
-      {'icon': Icons.local_dining, 'label': 'Zero Preservatives'},
-      {'icon': Icons.energy_savings_leaf, 'label': 'Freshly Made'},
-      {'icon': Icons.local_shipping, 'label': 'Fast Shipping'},
+      {'icon': Icons.water_drop, 'label': 'Alcohol Free'},
+      {'icon': Icons.health_and_safety, 'label': 'Skin Friendly'},
+      {'icon': Icons.local_shipping, 'label': 'Quick Dispatch'},
     ];
 
     return Container(
@@ -2020,6 +2022,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _addToCart() async {
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to add product to cart'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     try {
       setState(() {
         _isAddingToCart = true;
