@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth/auth_provider.dart';
 import '../../providers/category/category_provider.dart';
 import '../../pages/categories/category_product_list_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class CustomDrawer extends StatefulWidget {
   const CustomDrawer({super.key});
@@ -156,6 +157,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
     required dynamic icon,
     required String title,
     required VoidCallback onTap,
+    bool isImage = false,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -174,18 +176,24 @@ class _CustomDrawerState extends State<CustomDrawer> {
         dense: true,
         visualDensity: const VisualDensity(horizontal: 0, vertical: -4),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        leading: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: brandColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: icon is IconData
-              ? Icon(icon, color: brandColor, size: 18)
-              : (icon is Widget
-                    ? icon
-                    : FaIcon(icon, color: brandColor, size: 18)),
-        ),
+        leading: isImage
+            ? SizedBox(
+                width: 30,
+                height: 30,
+                child: icon is Widget ? icon : Container(),
+              )
+            : Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: brandColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: icon is IconData
+                    ? Icon(icon, color: brandColor, size: 18)
+                    : (icon is Widget
+                          ? icon
+                          : FaIcon(icon, color: brandColor, size: 18)),
+              ),
         title: Text(
           title,
           style: const TextStyle(
@@ -376,8 +384,51 @@ class _CustomDrawerState extends State<CustomDrawer> {
                           )
                         else
                           ...categories.map((category) {
+                            final hasImage = category.imageUrl != null && category.imageUrl!.isNotEmpty;
                             return _buildStyledListTile(
-                              icon: Icons.label_outline,
+                              isImage: hasImage,
+                              icon: hasImage
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: CachedNetworkImage(
+                                        imageUrl: category.imageUrl!,
+                                        width: 30,
+                                        height: 30,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Container(
+                                          width: 30,
+                                          height: 30,
+                                          decoration: BoxDecoration(
+                                            color: brandColor.withOpacity(0.05),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          width: 30,
+                                          height: 30,
+                                          decoration: BoxDecoration(
+                                            color: brandColor.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Icon(
+                                            Icons.label_outline,
+                                            color: brandColor,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Icons.label_outline,
                               title: category.title,
                               onTap: () {
                                 Navigator.pop(context);

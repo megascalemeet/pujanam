@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:pujanam/pages/notification/notification.dart';
 import 'package:pujanam/theme/app_color.dart';
+import 'package:pujanam/pages/auth/login.dart';
 import 'package:pujanam/widgets/drawer/custom_drawer.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
@@ -154,6 +157,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _toggleWishlist(String id, {int? variantId}) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final customerToken = prefs.getString('accessToken');
+      if (customerToken == null || customerToken.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please login to manage wishlist'),
+              backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        }
+        return;
+      }
+
       final wishlistProvider = Provider.of<WishlistProvider>(
         context,
         listen: false,
@@ -210,6 +232,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _addToCart(dynamic product) async {
+    final prefs = await SharedPreferences.getInstance();
+    final customerToken = prefs.getString('accessToken');
+    if (customerToken == null || customerToken.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please login to add product to cart'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+      return;
+    }
+
     String id = '';
     String title = '';
     if (product is ProductModel) {
@@ -257,8 +298,20 @@ class _HomeScreenState extends State<HomeScreen> {
         if (product.variants.isNotEmpty) {
           final v = product.variants[0];
           if (v is Map) {
-            priceAmount = v['price']?.toString();
-            compareAtAmount = v['compareAtPrice']?.toString();
+            final pVal = v['price'];
+            if (pVal is Map) {
+              priceAmount = pVal['amount']?.toString();
+            } else {
+              priceAmount = pVal?.toString();
+            }
+
+            final capVal = v['compareAtPrice'];
+            if (capVal is Map) {
+              compareAtAmount = capVal['amount']?.toString();
+            } else {
+              compareAtAmount = capVal?.toString();
+            }
+
             sku = v['sku']?.toString();
             variantId = v['id']?.toString().split('/').last;
             weight = v['title']?.toString() ?? "Default";
@@ -271,12 +324,20 @@ class _HomeScreenState extends State<HomeScreen> {
         final variants = product['variants'] as List<dynamic>? ?? [];
         final firstVariant = variants.isNotEmpty ? variants[0] : null;
         if (firstVariant != null) {
-          priceAmount =
-              firstVariant['price']?.toString() ??
-              firstVariant['price']?['amount']?.toString();
-          compareAtAmount =
-              firstVariant['compareAtPrice']?.toString() ??
-              firstVariant['compareAtPrice']?['amount']?.toString();
+          final pVal = firstVariant['price'];
+          if (pVal is Map) {
+            priceAmount = pVal['amount']?.toString();
+          } else {
+            priceAmount = pVal?.toString();
+          }
+
+          final capVal = firstVariant['compareAtPrice'];
+          if (capVal is Map) {
+            compareAtAmount = capVal['amount']?.toString();
+          } else {
+            compareAtAmount = capVal?.toString();
+          }
+
           sku = firstVariant['sku']?.toString();
           variantId = firstVariant['id']?.toString().split('/').last;
           weight = firstVariant['title']?.toString() ?? "Default";
@@ -303,16 +364,28 @@ class _HomeScreenState extends State<HomeScreen> {
         weight: weight,
       );
 
-      await cartProvider.addToCart(item);
+      final success = await cartProvider.addToCart(item);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Added to cart'),
-            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
-            duration: Duration(seconds: 1),
-          ),
-        );
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Added to cart'),
+              backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to add to cart'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -1439,7 +1512,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Row(
                           children: [
                             GestureDetector(
-                              onTap: () {}, // Empty share action as requested
+                              onTap: () async {
+                                try {
+                                  final handle = product.handle;
+                                  final String shareUrl = "https://store.nilkanthdham.in/products/$handle";
+                                  final text = "Check out this product: $shareUrl";
+                                  await Share.share(text);
+                                } catch (e) {
+                                  debugPrint('Error sharing product: $e');
+                                }
+                              },
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(

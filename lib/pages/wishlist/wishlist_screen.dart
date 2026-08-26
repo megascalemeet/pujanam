@@ -341,10 +341,20 @@ class _WishlistScreenState extends State<WishlistScreen> {
                               var firstVariant = productData['variants'][0];
                               if (firstVariant is Map) {
                                 if (price == '0.00' && firstVariant.containsKey('price')) {
-                                  price = firstVariant['price'].toString();
+                                  final pVal = firstVariant['price'];
+                                  if (pVal is Map) {
+                                    price = pVal['amount']?.toString() ?? '0.00';
+                                  } else {
+                                    price = pVal?.toString() ?? '0.00';
+                                  }
                                 }
                                 if (compareAtPrice.isEmpty && firstVariant.containsKey('compareAtPrice') && firstVariant['compareAtPrice'] != null) {
-                                  compareAtPrice = firstVariant['compareAtPrice'].toString();
+                                  final capVal = firstVariant['compareAtPrice'];
+                                  if (capVal is Map) {
+                                    compareAtPrice = capVal['amount']?.toString() ?? '';
+                                  } else {
+                                    compareAtPrice = capVal?.toString() ?? '';
+                                  }
                                 }
                               }
                             }
