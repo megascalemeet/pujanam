@@ -2,20 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pujanam/pages/categories/category_list_screen.dart';
-import 'package:pujanam/pages/categories/category_product_list_screen.dart';
 import 'package:pujanam/pages/notification/notification.dart';
 import 'package:pujanam/theme/app_color.dart';
 import 'package:pujanam/widgets/drawer/custom_drawer.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../models/category/category_response_model.dart';
 import '../../models/product/product_response_model.dart';
 import '../../providers/cart/cart_provider.dart';
 import '../../providers/category/category_provider.dart';
 import '../../providers/product/product_provider.dart';
 import '../../providers/wishlist/wishlist_provider.dart';
 import '../cart/cart_screen.dart';
+import '../categories/category_list_screen.dart';
+import '../categories/category_product_list_screen.dart';
 import '../products/product_detail_screen.dart';
 import '../products/product_list_screen.dart';
 import '../search/search_screen.dart';
@@ -150,10 +151,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _toggleWishlist(String id, {int? variantId}) async {
     try {
-      final wishlistProvider = Provider.of<WishlistProvider>(context, listen: false);
+      final wishlistProvider = Provider.of<WishlistProvider>(
+        context,
+        listen: false,
+      );
       final wasWishlisted = wishlistProvider.isProductWishlisted(id);
-      
-      final success = await wishlistProvider.toggleWishlist(id, variantId: variantId);
+
+      final success = await wishlistProvider.toggleWishlist(
+        id,
+        variantId: variantId,
+      );
 
       if (success) {
         if (mounted) {
@@ -171,7 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(wishlistProvider.errorMessage ?? 'Failed to update wishlist'),
+              content: Text(
+                wishlistProvider.errorMessage ?? 'Failed to update wishlist',
+              ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 1),
             ),
@@ -213,7 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
     iconSize = iconSize.clamp(20, 28);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
+      // Colors.grey[50],
       drawer: const CustomDrawer(),
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
@@ -423,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: List.generate(
             3,
-            (index) => Expanded(
+                (index) => Expanded(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
@@ -574,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
               posters.length,
-              (index) => Container(
+                  (index) => Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 width: 8,
                 height: 8,
@@ -622,254 +632,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNewArrivals() {
-    final provider = context.watch<CategoryProvider>();
-    final products = provider.perfumeProducts;
-    // Loading state - show nothing (shimmer already handled by overall _isLoading)
-    if (provider.isProductsLoading) {
-      return const SizedBox(
-        height: 310,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    // Empty state - hide section
-    if (products.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "New Arrivals",
-                      //'EXCLUSIVE',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.primary,
-
-                        //  fontFamily: 'Serif',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Row(
-                children: [
-                  _buildScrollButton(
-                    icon: Icons.arrow_back_ios_new,
-                    onPressed: () => _scrollList(_servedToGodController, -300),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildScrollButton(
-                    icon: Icons.arrow_forward_ios,
-                    onPressed: () => _scrollList(_servedToGodController, 300),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 310,
-          child: ListView.builder(
-            controller: _servedToGodController,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              final product = products[index];
-              final imageSrc = product.imageUrl ?? '';
-              final rating = product.avgRating;
-              final title = product.title;
-              final reviewCount = product.totalReviews;
-              final price = product.price.toString();
-              final compareAtPrice = product.compareAtPrice > 0
-                  ? product.compareAtPrice.toString()
-                  : null;
-              final id = product.id;
-
-              double discount = 0;
-              if (compareAtPrice != null) {
-                final original = double.tryParse(compareAtPrice) ?? 0;
-                final current = double.tryParse(price) ?? 0;
-                if (original > current && original > 0) {
-                  discount = ((original - current) / original) * 100;
-                }
-              }
-
-              return GestureDetector(
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProductDetailScreen(product: product),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 180,
-                  margin: const EdgeInsets.only(right: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              imageSrc,
-                              height: 180,
-                              width: 180,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 180,
-                                width: 180,
-                                color: Colors.grey[200],
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (discount > 0)
-                            Positioned(
-                              top: 10,
-                              left: 10,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'Sale -${discount.toInt()}%',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Positioned(
-                            top: 10,
-                            right: 10,
-                            child: GestureDetector(
-                              onTap: () => _toggleWishlist(
-                                id,
-                                variantId: _extractVariantId(product),
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.9),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  context.watch<WishlistProvider>().isProductWishlisted(id)
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: context.watch<WishlistProvider>().isProductWishlisted(id)
-                                      ? const Color.fromRGBO(111, 10, 15, 1)
-                                      : Colors.grey,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        "Shree Nilkanth Store",
-                        //"BHAGVATPUJNAM",
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-
-                      Row(
-                        children: [
-                          ...List.generate(5, (starIndex) {
-                            if (starIndex < rating.floor()) {
-                              return const Icon(
-                                Icons.star,
-                                color: Color.fromRGBO(111, 10, 15, 1),
-                                size: 14,
-                              );
-                            }
-                            if (starIndex < rating) {
-                              return const Icon(
-                                Icons.star_half,
-                                color: Color.fromRGBO(111, 10, 15, 1),
-                                size: 14,
-                              );
-                            }
-                            return const Icon(
-                              Icons.star_border,
-                              color: Color.fromRGBO(111, 10, 15, 1),
-                              size: 14,
-                            );
-                          }),
-                          const SizedBox(width: 4),
-                          Text(
-                            "($reviewCount reviews)",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "On sale from Rs. $price",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color.fromRGBO(111, 10, 15, 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildCategoriesSection() {
-    final categories = context.watch<CategoryProvider>().categories;
+    final categoryProvider = context.watch<CategoryProvider>();
+    final categories = categoryProvider.categories;
+    final isLoading = categoryProvider.isCategoriesLoading;
+    final error = categoryProvider.categoriesError;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -881,19 +649,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 "Shop By Collection",
                 style: TextStyle(
                   fontSize: 24,
-                  //fontSize: 24,
                   fontWeight: FontWeight.w500,
-                  //fontWeight: FontWeight.bold,
-                  //fontFamily: 'Serif',
                   color: AppColors.primary,
                 ),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
-                  color: Colors.grey,
+                  color: AppColors.primary,
                 ),
                 onPressed: () {
                   Navigator.push(
@@ -908,98 +673,127 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 8),
+
+        if (isLoading)
+          _buildLoadingState()
+        else if (error != null || categories.isEmpty)
+          _buildComingSoon()
+        else
+          _buildCategoryList(categories),
+      ],
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return SizedBox(
+      height: 155,
+      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+    );
+  }
+
+  Widget _buildComingSoon() {
+    return SizedBox(
+      height: 155,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.access_time, size: 40, color: Colors.grey[400]),
+            const SizedBox(height: 8),
+            Text(
+              'Coming Soon!',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            Text(
+              'New collections are on the way',
+              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryList(List<CategoryModel> categories) {
+    return SizedBox(
+      height: 155,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 16),
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          return _buildCategoryItem(cat);
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(CategoryModel cat) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CategoryProductListScreen(
+                  title: cat.title,
+                  handle: cat.handle,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              //color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(18),
+              // boxShadow: [
+              //   BoxShadow(
+              //     color: Colors.black.withOpacity(0.05),
+              //     blurRadius: 10,
+              //     offset: const Offset(0, 4),
+              //   ),
+              // ],
+              // border: Border.all(
+              //   //color: const Color.fromRGBO(111, 10, 15, 0.1),
+              //   width: 1,
+              // ),
+            ),
+            //padding: const EdgeInsets.fromLTRB(0, 6, 0, 6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: cat.imageUrl != null
+                  ? Image.network(
+                cat.imageUrl!,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                const Center(child: Icon(Icons.image_not_supported)),
+              )
+                  : const Center(child: Icon(Icons.category, size: 40)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         SizedBox(
-          height: 155,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final cat = categories[index];
-              return Column(
-                children: [
-                  GestureDetector(
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CategoryProductListScreen(
-                            title: cat.title,
-                            handle: cat.handle,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: const Color.fromRGBO(111, 10, 15, 0.1),
-                          width: 1,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: cat.imageUrl != null
-                            ? Image.network(
-                                cat.imageUrl!,
-                                fit: BoxFit.contain,
-                                // width: double.infinity,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Center(
-                                      child: Icon(Icons.image_not_supported),
-                                    ),
-                              )
-                            : const Center(
-                                child: Icon(Icons.category, size: 40),
-                              ),
-                        // Image.network(
-                        //   cat.imageUrl ?? '',
-                        //   fit: BoxFit.contain,
-                        //   errorBuilder: (_, __, ___) => Container(
-                        //     color: Colors.grey[50],
-                        //     child: const Icon(
-                        //       Icons.image_not_supported,
-                        //       color: Colors.grey,
-                        //     ),
-                        //   ),
-                        // ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 95,
-                    child: Text(
-                      cat.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                        // fontSize: 11,
-                        // fontWeight: FontWeight.w600,
-                        // color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+          width: 95,
+          child: Text(
+            cat.title.toUpperCase(),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.2,
+            ),
           ),
         ),
       ],
@@ -1026,13 +820,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Show error state
     if (errorMessage != null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-        child: Text(
-          'Error loading best sellers: $errorMessage',
-          style: const TextStyle(color: Colors.red),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     // Hide section if no products
@@ -1092,7 +880,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   // Wishlist button on top right
                   Positioned(
-                    top: 0,
+                    top: 5,
                     right: 0,
                     child: GestureDetector(
                       onTap: () => _toggleWishlist(
@@ -1112,10 +900,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         child: Icon(
-                          context.watch<WishlistProvider>().isProductWishlisted(id)
+                          context.watch<WishlistProvider>().isProductWishlisted(
+                            id,
+                          )
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: context.watch<WishlistProvider>().isProductWishlisted(id)
+                          color:
+                          context
+                              .watch<WishlistProvider>()
+                              .isProductWishlisted(id)
                               ? const Color.fromRGBO(111, 10, 15, 1)
                               : Colors.grey,
                           size: 12,
@@ -1133,8 +926,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
+                  //fontWeight: FontWeight.bold,
+                  // color: Colors.grey[800],
                 ),
               ),
               Text(
@@ -1157,6 +950,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
+            textAlign: .center,
             'Best Sellers',
             style: TextStyle(
               // fontFamily: 'Serif',
@@ -1180,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
@@ -1209,7 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(20),
                   child: const PremiumVideoPlayer(
                     videoUrl:
-                        'https://cdn.shopify.com/videos/c/o/v/c379f85e313c48eaa0a0d7648bb0a58c.mp4',
+                    'https://cdn.shopify.com/videos/c/o/v/c379f85e313c48eaa0a0d7648bb0a58c.mp4',
                   ),
                 ),
               ),
@@ -1234,12 +1028,295 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildNewArrivals() {
+    final provider = context.watch<CategoryProvider>();
+    final products = provider.perfumeProducts;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Loading state - show nothing (shimmer already handled by overall _isLoading)
+    if (provider.isProductsLoading) {
+      return const SizedBox(
+        height: 240,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    // Empty state - hide section
+    if (products.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "New Arrivals",
+                      //'EXCLUSIVE',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
+
+                        //  fontFamily: 'Serif',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  _buildScrollButton(
+                    icon: Icons.arrow_back_ios_new,
+                    onPressed: () => _scrollList(_servedToGodController, -300),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildScrollButton(
+                    icon: Icons.arrow_forward_ios,
+                    onPressed: () => _scrollList(_servedToGodController, 300),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 240,
+          child: ListView.builder(
+            controller: _servedToGodController,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              final imageSrc = product.imageUrl ?? '';
+              final rating = product.avgRating;
+              final title = product.title;
+              final reviewCount = product.totalReviews;
+              final price = product.price.toString();
+              final compareAtPrice = product.compareAtPrice > 0
+                  ? product.compareAtPrice.toString()
+                  : null;
+              final id = product.id;
+
+              final priceAmount = double.tryParse(price) ?? 0.0;
+              final compareAtAmount =
+                  double.tryParse(compareAtPrice ?? '') ?? 0.0;
+
+              // Calculate discount percentage if compareAtPrice exists
+              bool hasDiscount =
+                  compareAtAmount > 0 && compareAtAmount > priceAmount;
+              int discountPercent = 0;
+              if (hasDiscount) {
+                discountPercent =
+                    ((compareAtAmount - priceAmount) / compareAtAmount * 100)
+                        .round();
+              }
+
+              return GestureDetector(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProductDetailScreen(product: product),
+                    ),
+                  );
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 160,
+                  margin: const EdgeInsets.only(right: 16, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(15),
+                              ),
+                              child: Image.network(
+                                imageSrc,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.error),
+                                    ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.035 - 2,
+                                    //fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Text(
+                                      priceAmount > 0
+                                          ? '₹${priceAmount.toStringAsFixed(0)}'
+                                          : 'Price-',
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.035,
+                                        color: const Color.fromRGBO(
+                                          111,
+                                          10,
+                                          15,
+                                          1,
+                                        ),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (hasDiscount) ...[
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '₹${compareAtAmount.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.035 - 4,
+                                          color: Colors.grey[600],
+                                          decoration:
+                                          TextDecoration.lineThrough,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber,
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$discountPercent% OFF',
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.035 - 4,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    _buildStarRating(rating, size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '($reviewCount)',
+                                      style: TextStyle(
+                                        fontSize: screenWidth * 0.035 - 4,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () => _toggleWishlist(
+                            id,
+                            variantId: _extractVariantId(product),
+                          ),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: _isAddingToWishlist[id] == true
+                                ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color.fromRGBO(111, 10, 15, 1),
+                                ),
+                              ),
+                            )
+                                : Icon(
+                              context
+                                  .watch<WishlistProvider>()
+                                  .isProductWishlisted(id)
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color:
+                              context
+                                  .watch<WishlistProvider>()
+                                  .isProductWishlisted(id)
+                                  ? const Color.fromRGBO(111, 10, 15, 1)
+                                  : Colors.grey[600],
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFeaturedProductsSection(double screenWidth) {
     // Get products from provider - use watch to listen for changes
     final products = context.watch<ProductProvider>().products;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 24),
+      //margin: const EdgeInsets.symmetric(vertical: 20),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1291,308 +1368,315 @@ class _HomeScreenState extends State<HomeScreen> {
           // Show loading indicator while products are being fetched
           context.watch<ProductProvider>().isLoading
               ? const SizedBox(
-                  height: 260,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: Color.fromRGBO(111, 10, 15, 1),
-                    ),
-                  ),
-                )
+            height: 260,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Color.fromRGBO(111, 10, 15, 1),
+              ),
+            ),
+          )
               : products.isEmpty
               ? const SizedBox(
-                  height: 260,
-                  child: Center(
-                    child: Text(
-                      'No products available',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                  ),
-                )
+            height: 260,
+            child: Center(
+              child: Text(
+                'No products available',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            ),
+          )
               : SizedBox(
-                  height: 280,
-                  child: ListView.separated(
-                    controller: _featuredProductsController,
-                    scrollDirection: Axis.horizontal,
-                    itemCount: products.length > 10 ? 10 : products.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final product = products[index];
+            height: 240,
+            child: ListView.separated(
+              controller: _featuredProductsController,
+              scrollDirection: Axis.horizontal,
+              itemCount: products.length > 10 ? 10 : products.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final product = products[index];
 
-                      // Check if product has variants and media
-                      if (product.variants.isEmpty ||
-                          product.imageUrl.isEmpty) {
-                        return Container(
-                          width: 160,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.error_outline,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        );
-                      }
+                // Check if product has variants and media
+                if (product.variants.isEmpty ||
+                    product.imageUrl.isEmpty) {
+                  return Container(
+                    width: 160,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  );
+                }
 
-                      // Get the price values as strings and parse to double
-                      final priceStr = product.variants[0].price.amount;
-                      final compareAtStr =
-                          product.variants[0].compareAtPrice?.amount;
+                // Get the price values as strings and parse to double
+                final priceStr = product.variants[0].price.amount;
+                final compareAtStr =
+                    product.variants[0].compareAtPrice?.amount;
 
-                      final priceAmount = double.tryParse(priceStr) ?? 0.0;
-                      final compareAtAmount =
-                          double.tryParse(compareAtStr ?? '') ?? 0.0;
+                final priceAmount = double.tryParse(priceStr) ?? 0.0;
+                final compareAtAmount =
+                    double.tryParse(compareAtStr ?? '') ?? 0.0;
 
-                      final title = product.title;
-                      final image = product.imageUrl;
-                      final id = product.id;
+                final title = product.title;
+                final image = product.imageUrl;
+                final id = product.id;
 
-                      // Calculate discount percentage if compareAtPrice exists
-                      bool hasDiscount =
-                          compareAtAmount > 0 && compareAtAmount > priceAmount;
-                      int discountPercent = 0;
-                      if (hasDiscount) {
-                        discountPercent =
-                            ((compareAtAmount - priceAmount) /
-                                    compareAtAmount *
-                                    100)
-                                .round();
-                      }
+                // Calculate discount percentage if compareAtPrice exists
+                bool hasDiscount =
+                    compareAtAmount > 0 && compareAtAmount > priceAmount;
+                int discountPercent = 0;
+                if (hasDiscount) {
+                  discountPercent =
+                      ((compareAtAmount - priceAmount) /
+                          compareAtAmount *
+                          100)
+                          .round();
+                }
 
-                      return GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ProductDetailScreen(product: product),
-                            ),
-                          );
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 160,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 1,
-                                blurRadius: 5,
+                return GestureDetector(
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ProductDetailScreen(product: product),
+                      ),
+                    );
+                  },
+                  child: AnimatedContainer(
+                    // padding: .only(bottom: 20),
+                    duration: const Duration(milliseconds: 300),
+                    width: 160,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.3),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(15),
+                                ),
+                                child: Image.network(
+                                  image,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                      Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(
+                                          Icons.error,
+                                        ),
+                                      ),
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Stack(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(15),
-                                      ),
-                                      child: Image.network(
-                                        image,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                Container(
-                                                  color: Colors.grey[200],
-                                                  child: const Icon(
-                                                    Icons.error,
-                                                  ),
-                                                ),
-                                      ),
+                                  Text(
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: screenWidth * 0.035 - 2,
+                                      // fontWeight: FontWeight.bold,
                                     ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          title,
-                                          style: TextStyle(
-                                            fontSize: screenWidth * 0.035 - 2,
-                                            fontWeight: FontWeight.bold,
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        priceAmount > 0
+                                            ? '₹${priceAmount.toStringAsFixed(0)}'
+                                            : 'Price-',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.035,
+                                          color: const Color.fromRGBO(
+                                            111,
+                                            10,
+                                            15,
+                                            1,
                                           ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Text(
-                                              priceAmount > 0
-                                                  ? '₹${priceAmount.toStringAsFixed(0)}'
-                                                  : 'Price-',
-                                              style: TextStyle(
-                                                fontSize: screenWidth * 0.035,
-                                                color: const Color.fromRGBO(
-                                                  111,
-                                                  10,
-                                                  15,
-                                                  1,
-                                                ),
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            if (compareAtAmount >
-                                                priceAmount) ...[
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                '₹${compareAtAmount.toStringAsFixed(0)}',
-                                                style: TextStyle(
-                                                  fontSize:
-                                                      screenWidth * 0.035 - 4,
-                                                  color: Colors.grey[600],
-                                                  decoration: TextDecoration
-                                                      .lineThrough,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.amber,
-                                                   borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  '$discountPercent% OFF',
-                                                  style: TextStyle(
-                                                    fontSize:
-                                                        screenWidth * 0.035 - 4,
-                                                    //color:
-                                                    // const Color(
-                                                    //   0xFF2E7D32,
-                                                    // ),
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
+                                      ),
+                                      if (compareAtAmount >
+                                          priceAmount) ...[
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '₹${compareAtAmount.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            fontSize:
+                                            screenWidth * 0.035 - 4,
+                                            color: Colors.grey[600],
+                                            decoration: TextDecoration
+                                                .lineThrough,
+                                          ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            _buildStarRating(
-                                              product.avgRating ?? 0,
-                                              size: 12,
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber,
+                                            borderRadius:
+                                            BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            '$discountPercent% OFF',
+                                            style: TextStyle(
+                                              fontSize:
+                                              screenWidth * 0.035 - 4,
+                                              //color:
+                                              // const Color(
+                                              //   0xFF2E7D32,
+                                              // ),
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '(${product.totalReviews ?? 0})',
-                                              style: TextStyle(
-                                                fontSize:
-                                                    screenWidth * 0.035 - 4,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ],
-                                    ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      _buildStarRating(
+                                        product.avgRating ?? 0,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '(${product.totalReviews ?? 0})',
+                                        style: TextStyle(
+                                          fontSize:
+                                          screenWidth * 0.035 - 4,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              // % OFF Label - Top Left
-                              // if (hasDiscount)
-                              //   Positioned(
-                              //     top: 8,
-                              //     left: 8,
-                              //     child: Container(
-                              //       padding: const EdgeInsets.symmetric(
-                              //         horizontal: 6,
-                              //         vertical: 2,
-                              //       ),
-                              //       decoration: BoxDecoration(
-                              //         color: AppColors.primary,
-                              //         borderRadius: BorderRadius.circular(4),
-                              //       ),
-                              //       child: Text(
-                              //         '$discountPercent% OFF',
-                              //         style: const TextStyle(
-                              //           color: Colors.white,
-                              //           fontSize: 10,
-                              //           fontWeight: FontWeight.bold,
-                              //         ),
-                              //       ),
-                              //     ),
-                              //   ),
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: GestureDetector(
-                                  onTap: () => _toggleWishlist(
-                                    id,
-                                    variantId: _extractVariantId(product),
+                            ),
+                          ],
+                        ),
+                        // % OFF Label - Top Left
+                        // if (hasDiscount)
+                        //   Positioned(
+                        //     top: 8,
+                        //     left: 8,
+                        //     child: Container(
+                        //       padding: const EdgeInsets.symmetric(
+                        //         horizontal: 6,
+                        //         vertical: 2,
+                        //       ),
+                        //       decoration: BoxDecoration(
+                        //         color: AppColors.primary,
+                        //         borderRadius: BorderRadius.circular(4),
+                        //       ),
+                        //       child: Text(
+                        //         '$discountPercent% OFF',
+                        //         style: const TextStyle(
+                        //           color: Colors.white,
+                        //           fontSize: 10,
+                        //           fontWeight: FontWeight.bold,
+                        //         ),
+                        //       ),
+                        //     ),
+                        //   ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => _toggleWishlist(
+                              id,
+                              variantId: _extractVariantId(product),
+                            ),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
                                   ),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.9),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
+                                ],
+                              ),
+                              child: _isAddingToWishlist[id] == true
+                                  ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor:
+                                  AlwaysStoppedAnimation<Color>(
+                                    Color.fromRGBO(
+                                      111,
+                                      10,
+                                      15,
+                                      1,
                                     ),
-                                    child: _isAddingToWishlist[id] == true
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                    Color.fromRGBO(
-                                                      111,
-                                                      10,
-                                                      15,
-                                                      1,
-                                                    ),
-                                                  ),
-                                            ),
-                                          )
-                                        : Icon(
-                                            context.watch<WishlistProvider>().isProductWishlisted(id)
-                                                ? Icons.favorite
-                                                : Icons.favorite_border,
-                                            color: context.watch<WishlistProvider>().isProductWishlisted(id)
-                                                ? const Color.fromRGBO(
-                                                    111,
-                                                    10,
-                                                    15,
-                                                    1,
-                                                  )
-                                                : Colors.grey[600],
-                                            size: 16,
-                                          ),
                                   ),
                                 ),
+                              )
+                                  : Icon(
+                                context
+                                    .watch<WishlistProvider>()
+                                    .isProductWishlisted(id)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color:
+                                context
+                                    .watch<WishlistProvider>()
+                                    .isProductWishlisted(id)
+                                    ? const Color.fromRGBO(
+                                  111,
+                                  10,
+                                  15,
+                                  1,
+                                )
+                                    : Colors.grey[600],
+                                size: 16,
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
-                ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -1607,7 +1691,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withOpacity(0.3),
             spreadRadius: 1,
             blurRadius: 10,
             offset: const Offset(0, 5),
@@ -1687,28 +1771,28 @@ class _PremiumVideoPlayerState extends State<PremiumVideoPlayer> {
   void initState() {
     super.initState();
     _controller =
-        VideoPlayerController.network(
-            widget.videoUrl,
-            videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-          )
-          ..initialize()
-              .then((_) {
-                if (mounted) {
-                  setState(() {
-                    _initialized = true;
-                    _controller.setLooping(true);
-                    _controller.setVolume(0.0);
-                    _controller.play();
-                  });
-                }
-              })
-              .catchError((error) {
-                if (mounted) {
-                  setState(() {
-                    _hasError = true;
-                  });
-                }
-              });
+    VideoPlayerController.network(
+      widget.videoUrl,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    )
+      ..initialize()
+          .then((_) {
+        if (mounted) {
+          setState(() {
+            _initialized = true;
+            _controller.setLooping(true);
+            _controller.setVolume(0.0);
+            _controller.play();
+          });
+        }
+      })
+          .catchError((error) {
+        if (mounted) {
+          setState(() {
+            _hasError = true;
+          });
+        }
+      });
   }
 
   @override

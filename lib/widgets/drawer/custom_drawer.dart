@@ -12,8 +12,9 @@ import 'package:pujanam/widgets/drawer/policies/shipping_policy.dart';
 import 'package:pujanam/widgets/drawer/policies/terms_condition.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../providers/auth/auth_provider.dart';
+import '../../providers/category/category_provider.dart';
+import '../../pages/categories/category_product_list_screen.dart';
 
 class CustomDrawer extends StatefulWidget {
   const CustomDrawer({super.key});
@@ -31,6 +32,12 @@ class _CustomDrawerState extends State<CustomDrawer> {
   void initState() {
     super.initState();
     _fetchUserData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final categoryProvider = Provider.of<CategoryProvider>(context, listen: false);
+      if (categoryProvider.categories.isEmpty) {
+        categoryProvider.loadCategories();
+      }
+    });
   }
 
   // Function to fetch the email and accessToken from SharedPreferences
@@ -243,6 +250,37 @@ class _CustomDrawerState extends State<CustomDrawer> {
     );
   }
 
+  // Widget to build submenu items
+  Widget _buildSubmenuListTile({
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 1),
+      child: ListTile(
+        dense: true,
+        visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
+        contentPadding: const EdgeInsets.only(left: 36, right: 12),
+        leading: Icon(
+          Icons.arrow_right,
+          color: brandColor.withOpacity(0.7),
+          size: 16,
+        ),
+        horizontalTitleGap: 0,
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -318,16 +356,44 @@ class _CustomDrawerState extends State<CustomDrawer> {
                   title: 'Home',
                   onTap: () => Navigator.pop(context),
                 ),
-                _buildStyledListTile(
-                  icon: Icons.category_outlined,
-                  title: 'Categories',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const CategoryListScreen(),
-                      ),
+                Consumer<CategoryProvider>(
+                  builder: (context, categoryProvider, child) {
+                    final categories = categoryProvider.categories;
+                    return _buildStyledExpansionTile(
+                      icon: Icons.category_outlined,
+                      title: 'Categories',
+                      children: [
+                        if (categoryProvider.isCategoriesLoading)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          )
+                        else
+                          ...categories.map((category) {
+                            return _buildStyledListTile(
+                              icon: Icons.label_outline,
+                              title: category.title,
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CategoryProductListScreen(
+                                      title: category.title,
+                                      handle: category.handle,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          }),
+                      ],
                     );
                   },
                 ),

@@ -1756,7 +1756,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   product.title,
                                   style: const TextStyle(
                                     fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                   // fontWeight: FontWeight.bold,
                                     color: Colors.black87,
                                   ),
                                   maxLines: 2,

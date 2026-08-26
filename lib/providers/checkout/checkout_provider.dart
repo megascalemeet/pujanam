@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/checkout/coupon_model.dart';
+import '../../models/customer/customer_address.dart';
 import '../../services/checkout/checkout_api_service.dart';
+import '../../services/customer/customer_api_service.dart';
 
 class CheckoutProvider with ChangeNotifier {
   final CheckoutApiService _apiService = CheckoutApiService();
+  final CustomerApiService _customerApiService = CustomerApiService();
 
   List<Coupon> _coupons = [];
   bool _isLoading = false;
@@ -28,7 +31,7 @@ class CheckoutProvider with ChangeNotifier {
   String? get couponSuccess => _couponSuccess;
   bool get hasCouponApplied => _appliedCouponCode != null;
 
-  Future<void> fetchCoupons() async {
+  Future<void> fetchCoupons({double? cartSubtotal}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -37,6 +40,36 @@ class CheckoutProvider with ChangeNotifier {
       final response = await _apiService.fetchCoupons();
       if (response.success) {
         _coupons = response.coupons;
+
+        // Check if currently applied coupon has become ineligible due to subtotal
+        if (cartSubtotal != null && _appliedCouponCode != null) {
+          Coupon? appliedCoupon;
+          for (final coupon in _coupons) {
+            if (coupon.code.toUpperCase() == _appliedCouponCode!.toUpperCase()) {
+              appliedCoupon = coupon;
+              break;
+            }
+          }
+          if (appliedCoupon != null && appliedCoupon.minOrderAmount != null) {
+            if (cartSubtotal < appliedCoupon.minOrderAmount!) {
+              // The coupon is no longer eligible! Remove it.
+              removeCoupon();
+            }
+          }
+        }
+        
+        // Auto-apply free shipping coupon if cart subtotal matches targetingRules
+        if (cartSubtotal != null && _appliedCouponCode == null) {
+          for (final coupon in _coupons) {
+            if (coupon.discountType == 'free_shipping') {
+              final minAmt = coupon.minOrderAmount ?? 0;
+              if (cartSubtotal >= minAmt) {
+                applyCoupon(coupon.code);
+                break;
+              }
+            }
+          }
+        }
       } else {
         _errorMessage = 'Could not load coupons. Please try again.';
       }
@@ -88,6 +121,31 @@ class CheckoutProvider with ChangeNotifier {
               debugPrint('Failed to save to customer portal addresses: $e');
               // We do not fail the checkout flow if saving address failed to avoid blocking checkout.
             }
+
+            // 2. New call to sync with main Customer Profile API
+            try {
+              final newAddress = CustomerAddress(
+                id: '', // New address
+                firstName: addressData['firstName'] ?? '',
+                lastName: addressData['lastName'] ?? '',
+                addressLine1: addressData['address1'] ?? '',
+                addressLine2: addressData['address2'],
+                addressType: 'shipping',
+                city: addressData['city'] ?? '',
+                state: addressData['province'] ?? '',
+                postalCode: addressData['zip'] ?? '',
+                countryCode: addressData['country'] ?? 'IN',
+                phoneNumber: addressData['phone'] ?? '',
+                isDefault: true,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              );
+              await _customerApiService.addAddress(newAddress);
+              debugPrint('Address successfully synced to main profile.');
+            } catch (e) {
+              debugPrint('Failed to sync address to main profile: $e');
+            }
+
           }
         }
         return true;
@@ -95,8 +153,14 @@ class CheckoutProvider with ChangeNotifier {
         _errorMessage = 'Could not save your address. Please try again.';
         return false;
       }
-    } catch (_) {
-      _errorMessage = 'Could not save your address. Please check your connection and try again.';
+    } catch (e) {
+      final errorStr = e.toString();
+      if (errorStr.contains('Invalid checkout state transition') ||
+          errorStr.contains('payment_processing')) {
+        _errorMessage = 'Something went wrong. Please try again in a few minutes.';
+      } else {
+        _errorMessage = 'Could not save your address. Please check your connection and try again.';
+      }
       return false;
     } finally {
       _isLoading = false;
@@ -106,12 +170,26 @@ class CheckoutProvider with ChangeNotifier {
 
   /// Apply a coupon to the active checkout session.
   /// Returns true on success, false on failure.
-  Future<bool> applyCoupon(String couponCode) async {
+  Future<bool> applyCoupon(String couponCode, {double? cartSubtotal}) async {
     if (couponCode.trim().isEmpty) {
       _couponError = 'Please enter a coupon code.';
       _couponSuccess = null;
       notifyListeners();
       return false;
+    }
+
+    // Pre-validate eligibility based on cart subtotal if available
+    if (cartSubtotal != null) {
+      for (final coupon in _coupons) {
+        if (coupon.code.toUpperCase() == couponCode.trim().toUpperCase()) {
+          if (coupon.minOrderAmount != null && cartSubtotal < coupon.minOrderAmount!) {
+            _couponError = 'This coupon is only available on ₹${coupon.minOrderAmount} or above amount.';
+            _couponSuccess = null;
+            notifyListeners();
+            return false;
+          }
+        }
+      }
     }
 
     _isCouponLoading = true;

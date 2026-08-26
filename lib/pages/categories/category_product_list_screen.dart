@@ -1,23 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:pujanam/pages/products/product_detail_screen.dart';
-import 'package:pujanam/theme/app_color.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../models/category/category_product_response_model.dart';
 import '../../models/search/search_response_model.dart';
+import '../../providers/cart/cart_provider.dart';
 import '../../providers/category/category_provider.dart';
+import '../../providers/wishlist/wishlist_provider.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/advanced_filter_widget.dart';
-import '../auth/login.dart';
-import '../../providers/cart/cart_provider.dart';
 import '../cart/cart_screen.dart';
-import '../../providers/wishlist/wishlist_provider.dart';
 
 class CategoryProductListScreen extends StatefulWidget {
   final String title;
@@ -116,6 +111,27 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
     return id.split('/').last;
   }
 
+  String _normalizeVariant(String value) {
+    return value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  String? _getVariantDisplayValue(dynamic v) {
+    if (v is! Map) return null;
+    String title = v['title']?.toString() ?? "";
+    String opt1 = v['option1']?.toString() ?? "";
+
+    String value = "";
+    if (title.isNotEmpty &&
+        title.toLowerCase() != "default" &&
+        title.toLowerCase() != "default title") {
+      value = title;
+    } else if (opt1.isNotEmpty) {
+      value = opt1;
+    }
+
+    return value.isNotEmpty ? _normalizeVariant(value) : null;
+  }
+
   int? _extractVariantId(dynamic product) {
     if (product == null) return null;
     try {
@@ -127,7 +143,9 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
             return int.tryParse(firstVariant['id']?.toString() ?? '');
           } else {
             try {
-              return int.tryParse((firstVariant as dynamic).id?.toString() ?? '');
+              return int.tryParse(
+                (firstVariant as dynamic).id?.toString() ?? '',
+              );
             } catch (_) {}
           }
         }
@@ -135,12 +153,14 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
         try {
           final variants = (product as dynamic).variants;
           if (variants is List && variants.isNotEmpty) {
-             final firstVariant = variants[0];
-             if (firstVariant is Map) {
-               return int.tryParse(firstVariant['id']?.toString() ?? '');
-             } else {
-               return int.tryParse((firstVariant as dynamic).id?.toString() ?? '');
-             }
+            final firstVariant = variants[0];
+            if (firstVariant is Map) {
+              return int.tryParse(firstVariant['id']?.toString() ?? '');
+            } else {
+              return int.tryParse(
+                (firstVariant as dynamic).id?.toString() ?? '',
+              );
+            }
           }
         } catch (_) {}
       }
@@ -150,7 +170,11 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
     return null;
   }
 
-  Future<void> _toggleWishlist(BuildContext context, String productId, dynamic product) async {
+  Future<void> _toggleWishlist(
+      BuildContext context,
+      String productId,
+      dynamic product,
+      ) async {
     if (_isAddingToWishlist[productId] ?? false) return;
     final normalizedId = _getProductId(productId);
     final variantId = _extractVariantId(product);
@@ -160,10 +184,16 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
     });
 
     try {
-      final wishlistProvider = Provider.of<WishlistProvider>(context, listen: false);
+      final wishlistProvider = Provider.of<WishlistProvider>(
+        context,
+        listen: false,
+      );
       final wasWishlisted = wishlistProvider.isProductWishlisted(normalizedId);
-      
-      final success = await wishlistProvider.toggleWishlist(normalizedId, variantId: variantId);
+
+      final success = await wishlistProvider.toggleWishlist(
+        normalizedId,
+        variantId: variantId,
+      );
 
       if (success) {
         if (mounted) {
@@ -181,7 +211,9 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(wishlistProvider.errorMessage ?? 'Failed to update wishlist'),
+              content: Text(
+                wishlistProvider.errorMessage ?? 'Failed to update wishlist',
+              ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 1),
             ),
@@ -208,6 +240,36 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   }
 
   void _showAdvancedFilters() {
+    final provider = context.read<CategoryProvider>();
+    final products = provider.products;
+
+    double maxPrice = 1000.0;
+    Set<String> sizes = {};
+
+    if (products.isNotEmpty) {
+      double highest = products
+          .map((p) => p.price)
+          .reduce((a, b) => a > b ? a : b);
+      if (highest > 0) {
+        maxPrice = (highest / 100).ceil() * 100.0;
+      }
+
+      Map<String, String> uniqueSizes = {};
+      for (var p in products) {
+        for (var v in p.variants) {
+          String? displayValue = _getVariantDisplayValue(v);
+          if (displayValue != null) {
+            // Canonical key: lowercase and no spaces at all
+            String key = displayValue.toLowerCase().replaceAll(' ', '');
+            if (!uniqueSizes.containsKey(key)) {
+              uniqueSizes[key] = displayValue;
+            }
+          }
+        }
+      }
+      sizes.addAll(uniqueSizes.values);
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -222,9 +284,9 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
           currentFilters: _filterCriteria,
           currentSort: _sortOption,
           minPrice: 0,
-          maxPrice: 10000,
+          maxPrice: maxPrice,
           availableBrands: const ["Nilkanth", "Divine", "Traditional"],
-          availableSizes: const ["100g", "250g", "500g"],
+          availableSizes: sizes.toList()..sort(),
           availableColors: const [],
           availableCategories: const [],
           onFiltersChanged: (filters) =>
@@ -289,7 +351,10 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                 icon: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                    const Icon(
+                      Icons.shopping_cart_outlined,
+                      color: Colors.white,
+                    ),
                     if (count > 0)
                       Positioned(
                         right: -8,
@@ -361,19 +426,19 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                         prefixIcon: const Icon(Icons.search, color: brandColor),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.grey,
-                                ),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _apiSearchProducts = [];
-                                    _isApiSearchActive = false;
-                                    _isApiSearchLoading = false;
-                                  });
-                                },
-                              )
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _apiSearchProducts = [];
+                              _isApiSearchActive = false;
+                              _isApiSearchLoading = false;
+                            });
+                          },
+                        )
                             : null,
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
@@ -391,23 +456,23 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                   else if (provider.isProductsLoading)
                     _buildShimmerProducts()
                   else if (provider.productsError != null)
-                    _buildErrorState(
-                      provider.productsError!,
-                      () => provider.fetchProducts(widget.handle),
-                    )
-                  else if (provider.products.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Text(
-                        'No products found',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    )
-                  else
-                    _buildProductGrid(provider.products, brandColor),
+                      _buildErrorState(
+                        provider.productsError!,
+                            () => provider.fetchProducts(widget.handle),
+                      )
+                    else if (provider.products.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Text(
+                            'No products found',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        )
+                      else
+                        _buildProductGrid(provider.products, brandColor),
 
                   const SizedBox(height: 30),
                 ],
@@ -553,7 +618,7 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                         title,
                         style: TextStyle(
                           fontSize: fontSize - 2,
-                          fontWeight: FontWeight.bold,
+                          // fontWeight: FontWeight.bold,
                           fontFamily: 'Poppins',
                         ),
                         maxLines: 2,
@@ -670,24 +735,29 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                   ),
                   child: _isAddingToWishlist[id] == true
                       ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              brandColor,
-                            ),
-                          ),
-                        )
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        brandColor,
+                      ),
+                    ),
+                  )
                       : Icon(
-                          context.watch<WishlistProvider>().isProductWishlisted(_getProductId(id))
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: context.watch<WishlistProvider>().isProductWishlisted(_getProductId(id))
-                              ? brandColor
-                              : Colors.grey[600],
-                          size: 16,
-                        ),
+                    context.watch<WishlistProvider>().isProductWishlisted(
+                      _getProductId(id),
+                    )
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                    color:
+                    context
+                        .watch<WishlistProvider>()
+                        .isProductWishlisted(_getProductId(id))
+                        ? brandColor
+                        : Colors.grey[600],
+                    size: 16,
+                  ),
                 ),
               ),
             ),
@@ -767,22 +837,33 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   }
 
   Widget _buildProductGrid(
-    List<CategoryProductModel> products,
-    Color brandColor,
-  ) {
+      List<CategoryProductModel> products,
+      Color brandColor,
+      ) {
     final query = _searchController.text.toLowerCase();
 
     List<CategoryProductModel> filtered = products
         .where((p) => p.title.toLowerCase().contains(query))
         .toList();
 
+    if (_filterCriteria.selectedSizes != null &&
+        _filterCriteria.selectedSizes!.isNotEmpty) {
+      filtered = filtered.where((p) {
+        return p.variants.any((v) {
+          String? displayValue = _getVariantDisplayValue(v);
+          return displayValue != null &&
+              _filterCriteria.selectedSizes!.contains(displayValue);
+        });
+      }).toList();
+    }
+
     if (_filterCriteria.priceRange != null) {
       filtered = filtered
           .where(
             (p) =>
-                p.price >= _filterCriteria.priceRange!.start &&
-                p.price <= _filterCriteria.priceRange!.end,
-          )
+        p.price >= _filterCriteria.priceRange!.start &&
+            p.price <= _filterCriteria.priceRange!.end,
+      )
           .toList();
     }
 

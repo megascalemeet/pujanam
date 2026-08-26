@@ -4,6 +4,8 @@ import '../../models/payment/payment_models.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/cart/cart_provider.dart';
 import '../../providers/orders/order_provider.dart';
+import '../../providers/checkout/checkout_provider.dart';
+import '../../models/checkout/coupon_model.dart';
 import '../order/order_success_screen.dart';
 import 'payment_webview_screen.dart';
 
@@ -199,6 +201,26 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
       PaymentProvider provider, PaymentOptionsResponse options) {
     final summary = options.summary;
     final cartSubtotal = Provider.of<CartProvider>(context, listen: false).subtotal;
+    final checkoutProvider = Provider.of<CheckoutProvider>(context, listen: false);
+    final appliedCouponCode = checkoutProvider.appliedCouponCode;
+    double shippingFee = provider.shippingAmount ?? 0.0;
+
+    if (appliedCouponCode != null) {
+      Coupon? matchingCoupon;
+      for (final coupon in checkoutProvider.coupons) {
+        if (coupon.code.toUpperCase() == appliedCouponCode.toUpperCase()) {
+          matchingCoupon = coupon;
+          break;
+        }
+      }
+      if (matchingCoupon != null && matchingCoupon.discountType == 'free_shipping') {
+        final minOrderAmt = matchingCoupon.minOrderAmount ?? 0;
+        if (cartSubtotal >= minOrderAmt) {
+          shippingFee = 0.0;
+        }
+      }
+    }
+
     return Column(
       children: [
         Expanded(
@@ -275,17 +297,18 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                         '-₹${summary.discount.toStringAsFixed(2)}',
                         valueColor: Colors.green),
                     const SizedBox(height: 8),
-                    if (provider.shippingAmount != null && provider.shippingAmount! > 0) ...[
+                    if (provider.shippingAmount != null) ...[
                       _buildPriceRow(
                           'Shipping',
-                          '₹${provider.shippingAmount!.toStringAsFixed(2)}'),
+                          shippingFee > 0 ? '₹${shippingFee.toStringAsFixed(2)}' : 'FREE',
+                          valueColor: shippingFee > 0 ? null : Colors.green),
                       const SizedBox(height: 8),
                     ],
                     const Divider(),
                     const SizedBox(height: 8),
                     _buildPriceRow(
                       'Grand Total',
-                      '₹${(cartSubtotal - summary.discount + (provider.shippingAmount ?? 0)).toStringAsFixed(2)}',
+                      '₹${(cartSubtotal - summary.discount + shippingFee).toStringAsFixed(2)}',
                       isBold: true,
                       fontSize: 18,
                     ),

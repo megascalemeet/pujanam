@@ -99,7 +99,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = screenWidth * 0.45;
-    final cardHeight = screenWidth * 0.6;
+    final cardHeight = screenWidth * 0.52;
 
     final cartProvider = Provider.of<CartProvider>(context);
 
@@ -349,11 +349,11 @@ class _CartScreenState extends State<CartScreen> {
                                                     child: Image.network(
                                                       imageUrl,
                                                       width: double.infinity,
-                                                      height: cardHeight * 0.55,
+                                                      height: cardHeight * 0.60,
                                                       fit: BoxFit.cover,
                                                       errorBuilder: (context, error, stackTrace) => Container(
                                                         width: double.infinity,
-                                                        height: cardHeight * 0.55,
+                                                        height: cardHeight * 0.60,
                                                         color: Colors.grey[200],
                                                         child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
                                                       ),

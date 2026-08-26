@@ -31,6 +31,8 @@ class CustomerAddress {
     required this.updatedAt,
   });
 
+  //for ..
+
   factory CustomerAddress.fromJson(Map<String, dynamic> json) {
     final data = json['data'] ?? json;
     return CustomerAddress(
@@ -48,14 +50,14 @@ class CustomerAddress {
       phoneNumber: (data['phone'] ?? data['phoneNumber'] ?? '').toString(),
       isDefault: data['is_default'] == true || data['isDefault'] == true,
       createdAt:
-          DateTime.tryParse(
-            (data['created_at'] ?? data['createdAt'] ?? '').toString(),
-          ) ??
+      DateTime.tryParse(
+        (data['created_at'] ?? data['createdAt'] ?? '').toString(),
+      ) ??
           DateTime.now(),
       updatedAt:
-          DateTime.tryParse(
-            (data['updated_at'] ?? data['updatedAt'] ?? '').toString(),
-          ) ??
+      DateTime.tryParse(
+        (data['updated_at'] ?? data['updatedAt'] ?? '').toString(),
+      ) ??
           DateTime.now(),
     );
   }
@@ -73,4 +75,38 @@ class CustomerAddress {
     'is_default': isDefault,
     'addressType': addressType,
   };
+
+  CustomerAddress copyWith({
+    String? id,
+    String? firstName,
+    String? lastName,
+    String? addressLine1,
+    String? addressLine2,
+    String? addressType,
+    String? city,
+    String? state,
+    String? postalCode,
+    String? countryCode,
+    String? phoneNumber,
+    bool? isDefault,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return CustomerAddress(
+      id: id ?? this.id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      addressLine1: addressLine1 ?? this.addressLine1,
+      addressLine2: addressLine2 ?? this.addressLine2,
+      addressType: addressType ?? this.addressType,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      postalCode: postalCode ?? this.postalCode,
+      countryCode: countryCode ?? this.countryCode,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
