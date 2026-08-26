@@ -9,6 +9,7 @@ class CartProvider with ChangeNotifier {
   final CartApiService _apiService = CartApiService();
   List<CartItem> _items = [];
   bool _isLoading = false;
+  bool _isSyncing = false;
   String? _errorMessage;
   String? _sessionToken;
   String? _sessionId;
@@ -16,6 +17,7 @@ class CartProvider with ChangeNotifier {
 
   List<CartItem> get items => _items;
   bool get isLoading => _isLoading;
+  bool get isSyncing => _isSyncing;
   String? get errorMessage => _errorMessage;
   String? get sessionToken => _sessionToken;
   String? get sessionId => _sessionId;
@@ -85,7 +87,7 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> syncSession() async {
+  Future<bool> syncSession({bool silent = false}) async {
     if (_items.isEmpty) {
       _sessionToken = null;
       _sessionId = null;
@@ -97,7 +99,11 @@ class CartProvider with ChangeNotifier {
       return true;
     }
 
-    _isLoading = true;
+    if (silent) {
+      _isSyncing = true;
+    } else {
+      _isLoading = true;
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -140,6 +146,7 @@ class CartProvider with ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
+      _isSyncing = false;
       notifyListeners();
     }
   }
@@ -230,7 +237,8 @@ class CartProvider with ChangeNotifier {
     if (index >= 0) {
       _items[index] = _items[index].copyWith(quantity: quantity);
       await _saveCart();
-      await syncSession();
+      notifyListeners(); // Update UI immediately without full-page refresh
+      await syncSession(silent: true); // Sync in background without showing loader
     }
   }
 
@@ -243,7 +251,8 @@ class CartProvider with ChangeNotifier {
   Future<void> removeItemAndSync(String productId, String weight) async {
     _items.removeWhere((i) => i.productId == productId && i.weight == weight);
     await _saveCart();
-    await syncSession();
+    notifyListeners(); // Update UI immediately without full-page refresh
+    await syncSession(silent: true); // Sync in background without showing loader
   }
 
   Future<void> clearCart() async {

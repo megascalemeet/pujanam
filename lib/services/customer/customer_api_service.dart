@@ -91,6 +91,7 @@ class CustomerApiService {
     );
     return CustomerAddress.fromJson(_decode(response));
   }
+  //update address
 
   Future<CustomerAddress> updateAddress(
       String addressId,
@@ -105,6 +106,22 @@ class CustomerApiService {
       'UPDATE ADDRESS RESPONSE: ${response.statusCode} - ${response.body}',
     );
     return CustomerAddress.fromJson(_decode(response));
+  }
+
+  Future<void> setDefaultAddress(String addressId) async {
+    final response = await http.patch(
+      Uri.parse('$_baseUrl/shop/customer/addresses/$addressId/default'),
+      headers: await _headers(),
+    );
+    _decode(response);
+  }
+
+  Future<void> deleteAddress(String addressId) async {
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/shop/customer/addresses/$addressId'),
+      headers: await _headers(),
+    );
+    _decode(response);
   }
 
   Map<String, dynamic> _decode(http.Response response) {

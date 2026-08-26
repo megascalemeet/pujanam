@@ -280,7 +280,7 @@ class _ProductCardState extends State<ProductCard>
                         _productTitle(),
                         style: TextStyle(
                           fontSize: fontSize - 2,
-                          fontWeight: FontWeight.bold,
+                          //fontWeight: FontWeight.bold,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

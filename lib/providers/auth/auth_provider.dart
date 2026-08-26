@@ -193,7 +193,6 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         // Store the JWT token under both keys for compatibility with existing services.
         await prefs.setString('accessToken', response.token);
-        await prefs.setString('platformToken', response.token);
 
         await prefs.setString('customer_id', response.user.id);
         await prefs.setString('mobileNumber', response.user.phone);

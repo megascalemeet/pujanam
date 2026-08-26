@@ -5,6 +5,7 @@ import '../../models/customer/customer_address.dart';
 import '../../providers/auth/auth_provider.dart';
 import '../../providers/customer/customer_provider.dart';
 import '../auth/login.dart';
+import 'address_management_screen.dart';
 import 'edit_profile_screen.dart';
 
 const _brand = Color.fromRGBO(111, 10, 15, 1);
@@ -21,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<CustomerProvider>().loadCustomer(),
+          (_) => context.read<CustomerProvider>().loadCustomer(),
     );
   }
 
@@ -56,7 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final profile = customer.profile!;
           final address =
               customer.addresses.where((item) => item.isDefault).firstOrNull ??
-              (customer.addresses.isEmpty ? null : customer.addresses.first);
+                  (customer.addresses.isEmpty ? null : customer.addresses.first);
           return RefreshIndicator(
             color: _brand,
             onRefresh: customer.loadCustomer,
@@ -92,12 +93,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _profileHeader(
-    String firstName,
-    String lastName,
-    String phone,
-    bool verified,
-    bool saving,
-  ) {
+      String firstName,
+      String lastName,
+      String phone,
+      bool verified,
+      bool saving,
+      ) {
     final name = '$firstName $lastName'.trim();
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -141,12 +142,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   name.isEmpty ? 'Customer' : name,
                   style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
                     color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   phone.isEmpty ? 'No phone number' : phone,
                   style: TextStyle(
@@ -175,12 +176,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _dashboard(
-    String firstName,
-    String lastName,
-    String email,
-    String phone,
-    CustomerAddress? address,
-  ) {
+      String firstName,
+      String lastName,
+      String email,
+      String phone,
+      CustomerAddress? address,
+      ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: _cardDecoration(28),
@@ -197,59 +198,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'Shipping Address',
             address == null
                 ? [
-                    _tile(
-                      Icons.location_on_outlined,
-                      'Address',
-                      'No saved address',
-                    ),
-                  ]
+              _tile(
+                Icons.location_on_outlined,
+                'Address',
+                'No saved address',
+              ),
+            ]
                 : [
-                    _tile(
-                      Icons.location_on_outlined,
-                      'Address',
-                      '${address.addressLine1}${address.addressLine2?.isNotEmpty == true ? ', ${address.addressLine2}' : ''}',
-                    ),
-                    _compactRow(
-                      'City',
-                      address.city,
-                      'Pincode',
-                      address.postalCode,
-                    ),
-                    _compactRow(
-                      'State',
-                      address.state,
-                      'Country',
-                      address.countryCode,
-                    ),
-                  ],
+              _tile(
+                Icons.location_on_outlined,
+                'Address',
+                '${address.addressLine1}${address.addressLine2?.isNotEmpty == true ? ', ${address.addressLine2}' : ''}',
+              ),
+              _compactRow(
+                'City',
+                address.city,
+                'Pincode',
+                address.postalCode,
+              ),
+              _compactRow(
+                'State',
+                address.state,
+                'Country',
+                address.countryCode,
+              ),
+            ],
+            trailing: GestureDetector(
+              onTap: () => _openAddressManagement(),
+              child: const Text(
+                'Add',
+                style: TextStyle(
+                  color: _brand,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _section(String heading, List<Widget> children) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-        child: Text(
-          heading.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Color.fromRGBO(111, 10, 15, .6),
-            letterSpacing: 2,
+  Widget _section(String heading, List<Widget> children, {Widget? trailing}) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  heading.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromRGBO(111, 10, 15, .6),
+                    letterSpacing: 2,
+                  ),
+                ),
+                if (trailing != null) trailing,
+              ],
+            ),
           ),
-        ),
-      ),
-      ...children,
-      const SizedBox(height: 16),
-    ],
-  );
+          ...children,
+          const SizedBox(height: 16),
+        ],
+      );
 
   Widget _tile(IconData icon, String label, String value) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
     child: Row(
       children: [
         Container(
@@ -281,9 +300,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 value.isEmpty ? '-' : value,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  // color: AppColors.textPrimary,
+                  // fontSize: 16,
+                  // fontWeight: FontWeight.w600,
+                  // color: Colors.black87,
                 ),
               ),
             ],
@@ -294,11 +317,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   );
 
   Widget _compactRow(
-    String leftLabel,
-    String left,
-    String rightLabel,
-    String right,
-  ) => Padding(
+      String leftLabel,
+      String left,
+      String rightLabel,
+      String right,
+      ) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
     child: Row(
       children: [
@@ -326,9 +349,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           value.isEmpty ? '-' : value,
           style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            fontFamily: 'Poppins',
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            // color: AppColors.textPrimary,
+            // fontSize: 14,
+            // fontWeight: FontWeight.w600,
+            // color: Colors.black87,
           ),
         ),
       ],
@@ -408,6 +435,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _openAddressManagement() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddMultipleAddresses()),
+    );
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -434,7 +468,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),
-        (_) => false,
+            (_) => false,
       );
     }
   }

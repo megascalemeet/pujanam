@@ -20,6 +20,7 @@ class CustomerProvider with ChangeNotifier {
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
 
+  //customer
   Future<void> loadCustomer() async {
     _isLoading = true;
     _errorMessage = null;
@@ -39,11 +40,11 @@ class CustomerProvider with ChangeNotifier {
   }
 
   Future<bool> updateProfile(
-    String firstName,
-    String lastName, {
-    String? email,
-    String? phoneNumber,
-  }) async {
+      String firstName,
+      String lastName, {
+        String? email,
+        String? phoneNumber,
+      }) async {
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
@@ -113,7 +114,6 @@ class CustomerProvider with ChangeNotifier {
     }
   }
 
-  /// Keeps login-related contact values in sync after a successful profile save.
   Future<void> _updateStoredContactDetails() async {
     final profile = _profile;
     if (profile == null) return;
@@ -128,6 +128,100 @@ class CustomerProvider with ChangeNotifier {
     if (profile.phoneNumber.isNotEmpty &&
         profile.phoneNumber != preferences.getString('mobileNumber')) {
       await preferences.setString('mobileNumber', profile.phoneNumber);
+    }
+  }
+
+  Future<bool> addAddress(CustomerAddress address) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final newAddress = await _apiService.addAddress(address);
+      _addresses.add(newAddress);
+      if (newAddress.isDefault) {
+        for (var i = 0; i < _addresses.length; i++) {
+          if (_addresses[i].id != newAddress.id) {
+            _addresses[i] = _addresses[i].copyWith(isDefault: false);
+          }
+        }
+      }
+      return true;
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateAddress(CustomerAddress address) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final updatedAddress = await _apiService.updateAddress(
+        address.id,
+        address,
+      );
+      final index = _addresses.indexWhere(
+            (item) => item.id == updatedAddress.id,
+      );
+      if (index != -1) {
+        _addresses[index] = updatedAddress;
+      }
+      if (updatedAddress.isDefault) {
+        for (var i = 0; i < _addresses.length; i++) {
+          if (_addresses[i].id != updatedAddress.id) {
+            _addresses[i] = _addresses[i].copyWith(isDefault: false);
+          }
+        }
+      }
+      return true;
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteAddress(String addressId) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _apiService.deleteAddress(addressId);
+      _addresses.removeWhere((item) => item.id == addressId);
+      return true;
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> setDefaultAddress(String addressId) async {
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _apiService.setDefaultAddress(addressId);
+      for (var i = 0; i < _addresses.length; i++) {
+        _addresses[i] = _addresses[i].copyWith(
+          isDefault: _addresses[i].id == addressId,
+        );
+      }
+      return true;
+    } catch (error) {
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
     }
   }
 }

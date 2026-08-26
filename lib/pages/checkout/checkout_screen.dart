@@ -45,7 +45,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<CheckoutProvider>(context, listen: false).fetchCoupons();
+      Provider.of<CheckoutProvider>(context, listen: false)
+          .fetchCoupons(cartSubtotal: widget.totalAmount);
     });
   }
 
@@ -131,7 +132,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final code = _couponController.text.trim();
     final checkoutProvider =
         Provider.of<CheckoutProvider>(context, listen: false);
-    final success = await checkoutProvider.applyCoupon(code);
+    final success = await checkoutProvider.applyCoupon(code, cartSubtotal: _totalAmount);
     if (mounted) {
       if (success) {
         _couponController.clear();

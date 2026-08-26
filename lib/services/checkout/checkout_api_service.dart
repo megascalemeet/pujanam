@@ -12,16 +12,47 @@ class CheckoutApiService {
   static const String _merchantId = ApiConstants.checkoutMerchantId;
   static const String _apiKey = ApiConstants.checkoutApiKey;
 
+  // Future<CouponResponse> fetchCoupons() async {
+  //   final url = '$_baseUrl/checkout/coupons?merchantId=$_merchantId';
+  //   try {
+  //     final response = await http.get(Uri.parse(url));
+  //     if (response.statusCode == 200) {
+  //       return CouponResponse.fromJson(json.decode(response.body));
+  //     } else {
+  //       throw Exception('Failed to load coupons (${response.statusCode})');
+  //     }
+  //   } catch (_) {
+  //     rethrow;
+  //   }
+  // }
+
   Future<CouponResponse> fetchCoupons() async {
     final url = '$_baseUrl/checkout/coupons?merchantId=$_merchantId';
+
     try {
+      // Request logs
+      debugPrint('========== FETCH COUPONS API REQUEST ==========');
+      debugPrint('GET: $url');
+
       final response = await http.get(Uri.parse(url));
+
+      // Response logs
+      debugPrint('========== FETCH COUPONS API RESPONSE ==========');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('==============================================');
+
       if (response.statusCode == 200) {
         return CouponResponse.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Failed to load coupons (${response.statusCode})');
+        throw Exception(
+          'Failed to load coupons (${response.statusCode})\nResponse: ${response.body}',
+        );
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('========== FETCH COUPONS API ERROR ==========');
+      debugPrint(e.toString());
+      debugPrint('============================================');
       rethrow;
     }
   }

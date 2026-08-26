@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../providers/category/category_provider.dart';
+
 import '../../providers/cart/cart_provider.dart';
+import '../../providers/category/category_provider.dart';
 import '../cart/cart_screen.dart';
 import 'category_product_list_screen.dart';
 
@@ -47,11 +48,12 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
       ),
     ),
   );
-
+  //categories..
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
+      // backgroundColor: Colors.grey[50],
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
@@ -174,97 +176,97 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                         ),
                       )
                     else if (provider.categories.isEmpty)
-                      const Center(child: Text("No categories found"))
-                    else
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.8,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                            ),
-                        itemCount: provider.categories.length,
-                        itemBuilder: (context, index) {
-                          var category = provider.categories[index];
-                          return GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CategoryProductListScreen(
-                                  title: category.title,
-                                  handle: category.handle,
+                        const Center(child: Text("No categories found"))
+                      else
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.8,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                          ),
+                          itemCount: provider.categories.length,
+                          itemBuilder: (context, index) {
+                            var category = provider.categories[index];
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CategoryProductListScreen(
+                                    title: category.title,
+                                    handle: category.handle,
+                                  ),
                                 ),
                               ),
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.2),
-                                    spreadRadius: 1,
-                                    blurRadius: 5,
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(20),
-                                      ),
-                                      child: category.imageUrl != null
-                                          ? Image.network(
-                                              category.imageUrl!,
-                                              fit: BoxFit.fill,
-                                              width: double.infinity,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => const Center(
-                                                    child: Icon(
-                                                      Icons.image_not_supported,
-                                                    ),
-                                                  ),
-                                            )
-                                          : const Center(
-                                              child: Icon(
-                                                Icons.category,
-                                                size: 40,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Center(
-                                      child: Text(
-                                        category.title,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'Poppins',
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  /// color: Colors.white,
+                                  //borderRadius: BorderRadius.circular(20),
+                                  // boxShadow: [
+                                  //   BoxShadow(
+                                  //     color: Colors.grey.withOpacity(0.2),
+                                  //     spreadRadius: 1,
+                                  //     blurRadius: 5,
+                                  //   ),
+                                  // ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: const BorderRadius.vertical(
+                                          top: Radius.circular(20),
                                         ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.center,
+                                        child: category.imageUrl != null
+                                            ? Image.network(
+                                          category.imageUrl!,
+                                          fit: BoxFit.fill,
+                                          width: double.infinity,
+                                          errorBuilder:
+                                              (
+                                              context,
+                                              error,
+                                              stackTrace,
+                                              ) => const Center(
+                                            child: Icon(
+                                              Icons.image_not_supported,
+                                            ),
+                                          ),
+                                        )
+                                            : const Center(
+                                          child: Icon(
+                                            Icons.category,
+                                            size: 40,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Center(
+                                        child: Text(
+                                          category.title,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            );
+                          },
+                        ),
                     const SizedBox(height: 32),
                   ],
                 ),
