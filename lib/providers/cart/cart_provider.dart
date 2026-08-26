@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,6 +30,10 @@ class CartProvider with ChangeNotifier {
       total += item.price * item.quantity;
     }
     return total;
+  }
+
+  bool isInCart(String productId) {
+    return _items.any((item) => item.productId == productId);
   }
 
   Future<void> loadCart() => fetchAndUpdateFromSession();
@@ -80,7 +85,9 @@ class CartProvider with ChangeNotifier {
   Future<void> _saveCart() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cartString = json.encode(_items.map((item) => item.toJson()).toList());
+      final cartString = json.encode(
+        _items.map((item) => item.toJson()).toList(),
+      );
       await prefs.setString('local_cart', cartString);
     } catch (e) {
       debugPrint('Error saving cart: $e');
@@ -159,7 +166,8 @@ class CartProvider with ChangeNotifier {
       final wasEmpty = _items.isEmpty;
 
       final index = _items.indexWhere(
-          (i) => i.productId == item.productId && i.weight == item.weight);
+        (i) => i.productId == item.productId && i.weight == item.weight,
+      );
 
       if (index >= 0) {
         final existingItem = _items[index];
@@ -185,7 +193,10 @@ class CartProvider with ChangeNotifier {
           }
         }
       } else {
-        final response = await _apiService.updateCartItems(_sessionToken!, _items);
+        final response = await _apiService.updateCartItems(
+          _sessionToken!,
+          _items,
+        );
         if (response.success) {
           _checkoutTotal = response.grandTotal;
         } else {
@@ -209,14 +220,19 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateQuantity(String productId, String weight, int quantity) async {
+  Future<void> updateQuantity(
+    String productId,
+    String weight,
+    int quantity,
+  ) async {
     if (quantity <= 0) {
       await removeItem(productId, weight);
       return;
     }
 
     final index = _items.indexWhere(
-        (i) => i.productId == productId && i.weight == weight);
+      (i) => i.productId == productId && i.weight == weight,
+    );
 
     if (index >= 0) {
       _items[index] = _items[index].copyWith(quantity: quantity);
@@ -225,20 +241,27 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateQuantityAndSync(String productId, String weight, int quantity) async {
+  Future<void> updateQuantityAndSync(
+    String productId,
+    String weight,
+    int quantity,
+  ) async {
     if (quantity <= 0) {
       await removeItemAndSync(productId, weight);
       return;
     }
 
     final index = _items.indexWhere(
-        (i) => i.productId == productId && i.weight == weight);
+      (i) => i.productId == productId && i.weight == weight,
+    );
 
     if (index >= 0) {
       _items[index] = _items[index].copyWith(quantity: quantity);
       await _saveCart();
       notifyListeners(); // Update UI immediately without full-page refresh
-      await syncSession(silent: true); // Sync in background without showing loader
+      await syncSession(
+        silent: true,
+      ); // Sync in background without showing loader
     }
   }
 
@@ -252,7 +275,9 @@ class CartProvider with ChangeNotifier {
     _items.removeWhere((i) => i.productId == productId && i.weight == weight);
     await _saveCart();
     notifyListeners(); // Update UI immediately without full-page refresh
-    await syncSession(silent: true); // Sync in background without showing loader
+    await syncSession(
+      silent: true,
+    ); // Sync in background without showing loader
   }
 
   Future<void> clearCart() async {
