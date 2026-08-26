@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:pujanam/pages/products/product_detail_screen.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../../models/cart/cart_models.dart';
 import '../../models/category/category_product_response_model.dart';
+import '../../models/product/product_response_model.dart';
 import '../../models/search/search_response_model.dart';
 import '../../providers/cart/cart_provider.dart';
 import '../../providers/category/category_provider.dart';
@@ -34,6 +36,7 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   final TextEditingController _searchController = TextEditingController();
   Map<String, bool> _wishlistStatus = {};
   Map<String, bool> _isAddingToWishlist = {};
+  Map<String, bool> _isAddingToCart = {};
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -135,34 +138,26 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   int? _extractVariantId(dynamic product) {
     if (product == null) return null;
     try {
-      if (product is Map) {
-        final variants = product['variants'];
-        if (variants is List && variants.isNotEmpty) {
-          final firstVariant = variants[0];
-          if (firstVariant is Map) {
-            return int.tryParse(firstVariant['id']?.toString() ?? '');
-          } else {
-            try {
-              return int.tryParse(
-                (firstVariant as dynamic).id?.toString() ?? '',
-              );
-            } catch (_) {}
-          }
+      List<dynamic>? variants;
+      if (product is ProductModel) {
+        variants = product.variants;
+      } else if (product is CategoryProductModel) {
+        variants = product.variants;
+      } else if (product is Map) {
+        variants = product['variants'] as List<dynamic>?;
+      }
+
+      if (variants != null && variants.isNotEmpty) {
+        final firstVariant = variants[0];
+        if (firstVariant is ProductVariantModel) {
+          return int.tryParse(firstVariant.id.toString().split('/').last);
+        } else if (firstVariant is Map) {
+          return int.tryParse(firstVariant['id']?.toString() ?? '');
+        } else {
+          try {
+            return int.tryParse((firstVariant as dynamic).id?.toString() ?? '');
+          } catch (_) {}
         }
-      } else {
-        try {
-          final variants = (product as dynamic).variants;
-          if (variants is List && variants.isNotEmpty) {
-            final firstVariant = variants[0];
-            if (firstVariant is Map) {
-              return int.tryParse(firstVariant['id']?.toString() ?? '');
-            } else {
-              return int.tryParse(
-                (firstVariant as dynamic).id?.toString() ?? '',
-              );
-            }
-          }
-        } catch (_) {}
       }
     } catch (e) {
       // ignore
@@ -171,10 +166,10 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   }
 
   Future<void> _toggleWishlist(
-      BuildContext context,
-      String productId,
-      dynamic product,
-      ) async {
+    BuildContext context,
+    String productId,
+    dynamic product,
+  ) async {
     if (_isAddingToWishlist[productId] ?? false) return;
     final normalizedId = _getProductId(productId);
     final variantId = _extractVariantId(product);
@@ -234,6 +229,130 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
       if (mounted) {
         setState(() {
           _isAddingToWishlist[productId] = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _addToCart(BuildContext context, dynamic product) async {
+    String id = '';
+    String title = '';
+    if (product is ProductModel) {
+      id = product.id;
+      title = product.title;
+    } else if (product is CategoryProductModel) {
+      id = product.id;
+      title = product.title;
+    } else if (product is Map) {
+      id = product['id']?.toString() ?? '';
+      title = product['title']?.toString() ?? '';
+    }
+
+    final normalizedId = id.split('/').last;
+
+    if (_isAddingToCart[normalizedId] == true) return;
+
+    setState(() {
+      _isAddingToCart[normalizedId] = true;
+    });
+
+    try {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+      String? priceAmount;
+      String? compareAtAmount;
+      String? displayImgUrl;
+      String? sku;
+      String? variantId;
+      String weight = "Default";
+
+      if (product is ProductModel) {
+        if (product.variants.isNotEmpty) {
+          final v = product.variants[0];
+          priceAmount = v.price.amount;
+          compareAtAmount = v.compareAtPrice?.amount;
+          sku = v.sku;
+          variantId = v.id.toString().split('/').last;
+          weight = v.title;
+        }
+        displayImgUrl = product.images.isNotEmpty
+            ? product.images[0].url
+            : product.imageUrl;
+      } else if (product is CategoryProductModel) {
+        if (product.variants.isNotEmpty) {
+          final v = product.variants[0];
+          if (v is Map) {
+            priceAmount = v['price']?.toString();
+            compareAtAmount = v['compareAtPrice']?.toString();
+            sku = v['sku']?.toString();
+            variantId = v['id']?.toString().split('/').last;
+            weight = v['title']?.toString() ?? "Default";
+          }
+        }
+        priceAmount ??= product.price.toString();
+        compareAtAmount ??= product.compareAtPrice.toString();
+        displayImgUrl = product.imageUrl;
+      } else if (product is Map) {
+        final variants = product['variants'] as List<dynamic>? ?? [];
+        final firstVariant = variants.isNotEmpty ? variants[0] : null;
+        if (firstVariant != null) {
+          priceAmount =
+              firstVariant['price']?.toString() ??
+              firstVariant['price']?['amount']?.toString();
+          compareAtAmount =
+              firstVariant['compareAtPrice']?.toString() ??
+              firstVariant['compareAtPrice']?['amount']?.toString();
+          sku = firstVariant['sku']?.toString();
+          variantId = firstVariant['id']?.toString().split('/').last;
+          weight = firstVariant['title']?.toString() ?? "Default";
+        }
+        final images = product['media']?.isNotEmpty == true
+            ? product['media']
+            : product['images'] ?? [];
+        if (images.isNotEmpty) {
+          displayImgUrl =
+              images[0]['previewSrc']?.toString() ??
+              images[0]['src']?.toString();
+        }
+      }
+
+      final item = CartItem(
+        productId: normalizedId,
+        variantId: variantId ?? '',
+        price: double.tryParse(priceAmount ?? '0.0') ?? 0.0,
+        compareAtPrice: double.tryParse(compareAtAmount ?? '0.0') ?? 0.0,
+        quantity: 1,
+        sku: sku ?? '',
+        title: title,
+        imageUrl: displayImgUrl ?? '',
+        weight: weight,
+      );
+
+      await cartProvider.addToCart(item);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Added to cart'),
+            backgroundColor: Color.fromRGBO(111, 10, 15, 1),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error adding to cart'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAddingToCart[normalizedId] = false;
         });
       }
     }
@@ -426,19 +545,19 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                         prefixIcon: const Icon(Icons.search, color: brandColor),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _apiSearchProducts = [];
-                              _isApiSearchActive = false;
-                              _isApiSearchLoading = false;
-                            });
-                          },
-                        )
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _apiSearchProducts = [];
+                                    _isApiSearchActive = false;
+                                    _isApiSearchLoading = false;
+                                  });
+                                },
+                              )
                             : null,
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
@@ -456,23 +575,23 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                   else if (provider.isProductsLoading)
                     _buildShimmerProducts()
                   else if (provider.productsError != null)
-                      _buildErrorState(
-                        provider.productsError!,
-                            () => provider.fetchProducts(widget.handle),
-                      )
-                    else if (provider.products.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Text(
-                            'No products found',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        )
-                      else
-                        _buildProductGrid(provider.products, brandColor),
+                    _buildErrorState(
+                      provider.productsError!,
+                      () => provider.fetchProducts(widget.handle),
+                    )
+                  else if (provider.products.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Text(
+                        'No products found',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    )
+                  else
+                    _buildProductGrid(provider.products, brandColor),
 
                   const SizedBox(height: 30),
                 ],
@@ -670,6 +789,46 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
                               ),
                             ),
                           ],
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => _addToCart(context, originalProduct),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: _isAddingToCart[id.split('/').last] == true
+                                  ? SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              brandColor,
+                                            ),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.shopping_cart_outlined,
+                                      color:
+                                          context
+                                              .watch<CartProvider>()
+                                              .isInCart(id.split('/').last)
+                                          ? brandColor
+                                          : Colors.grey[600],
+                                      size: 14,
+                                    ),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -718,47 +877,73 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
             Positioned(
               top: 8,
               right: 8,
-              child: GestureDetector(
-                onTap: () => _toggleWishlist(context, id, originalProduct),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {}, // Empty share action as requested
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: _isAddingToWishlist[id] == true
-                      ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        brandColor,
+                      child: const Icon(
+                        Icons.share,
+                        color: Colors.grey,
+                        size: 16,
                       ),
                     ),
-                  )
-                      : Icon(
-                    context.watch<WishlistProvider>().isProductWishlisted(
-                      _getProductId(id),
-                    )
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    color:
-                    context
-                        .watch<WishlistProvider>()
-                        .isProductWishlisted(_getProductId(id))
-                        ? brandColor
-                        : Colors.grey[600],
-                    size: 16,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _toggleWishlist(context, id, originalProduct),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: _isAddingToWishlist[id] == true
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  brandColor,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              context
+                                      .watch<WishlistProvider>()
+                                      .isProductWishlisted(_getProductId(id))
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color:
+                                  context
+                                      .watch<WishlistProvider>()
+                                      .isProductWishlisted(_getProductId(id))
+                                  ? brandColor
+                                  : Colors.grey[600],
+                              size: 16,
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -837,9 +1022,9 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
   }
 
   Widget _buildProductGrid(
-      List<CategoryProductModel> products,
-      Color brandColor,
-      ) {
+    List<CategoryProductModel> products,
+    Color brandColor,
+  ) {
     final query = _searchController.text.toLowerCase();
 
     List<CategoryProductModel> filtered = products
@@ -861,9 +1046,9 @@ class _CategoryProductListScreenState extends State<CategoryProductListScreen>
       filtered = filtered
           .where(
             (p) =>
-        p.price >= _filterCriteria.priceRange!.start &&
-            p.price <= _filterCriteria.priceRange!.end,
-      )
+                p.price >= _filterCriteria.priceRange!.start &&
+                p.price <= _filterCriteria.priceRange!.end,
+          )
           .toList();
     }
 

@@ -4,8 +4,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../services/auth/auth_api_service.dart';
 import '../../models/auth/checkout_auth_models.dart';
+import '../../services/auth/auth_api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthApiService _apiService = AuthApiService();
@@ -279,7 +279,8 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final SendCheckoutOtpResponse response = await _apiService.sendCheckoutOtp(phone);
+      final SendCheckoutOtpResponse response = await _apiService
+          .sendCheckoutOtp(phone);
 
       if (response.success) {
         _isOtpSent = true;
@@ -287,7 +288,9 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = response.message.isNotEmpty ? response.message : 'Failed to send OTP';
+        _errorMessage = response.message.isNotEmpty
+            ? response.message
+            : 'Failed to send OTP';
         _isLoading = false;
         notifyListeners();
         return false;
@@ -311,7 +314,8 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final VerifyCheckoutOtpResponse response = await _apiService.verifyCheckoutOtp(phone, otp);
+      final VerifyCheckoutOtpResponse response = await _apiService
+          .verifyCheckoutOtp(phone, otp);
 
       if (response.accessToken.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
@@ -323,7 +327,8 @@ class AuthProvider with ChangeNotifier {
 
         // Generate a fallback name from the email prefix if name is needed
         String name = '';
-        if (response.user.email.isNotEmpty && response.user.email.contains('@')) {
+        if (response.user.email.isNotEmpty &&
+            response.user.email.contains('@')) {
           name = response.user.email.split('@')[0];
         }
         await prefs.setString('name', name);
@@ -344,5 +349,4 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
   }
-
 }
