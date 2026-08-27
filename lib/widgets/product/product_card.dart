@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:pujanam/models/category/category_product_response_model.dart';
 import 'package:pujanam/models/product/product_response_model.dart';
 
@@ -648,7 +649,26 @@ class _ProductCardState extends State<ProductCard>
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () {}, // Empty share action as requested
+                    onTap: () async {
+                      try {
+                        String handle = '';
+                        if (widget.product is ProductModel) {
+                          handle = (widget.product as ProductModel).handle;
+                        } else if (widget.product is CategoryProductModel) {
+                          handle = (widget.product as CategoryProductModel).handle;
+                        } else if (widget.product is Map) {
+                          handle = widget.product['handle']?.toString() ?? '';
+                        }
+
+                        if (handle.isNotEmpty) {
+                          final String shareUrl = "https://store.nilkanthdham.in/products/$handle";
+                          final text = "Check out this product: $shareUrl";
+                          await Share.share(text);
+                        }
+                      } catch (e) {
+                        debugPrint('Error sharing product: $e');
+                      }
+                    },
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
